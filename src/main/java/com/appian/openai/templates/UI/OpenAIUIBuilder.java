@@ -2,8 +2,10 @@ package com.appian.openai.templates.UI;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
@@ -13,6 +15,7 @@ import com.appian.openai.templates.OpenAICSP;
 
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.Schema;
 import std.Util;
 
 public class OpenAIUIBuilder extends UIBuilder{
@@ -123,23 +126,23 @@ public class OpenAIUIBuilder extends UIBuilder{
     }
 
     MediaType documentType = openAPI.getPaths().get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data");
-    Map<?,?> properties = (documentType == null) ?
+    Schema<?> schema = (documentType == null) ?
         paths.get(pathName)
             .getPost()
             .getRequestBody()
             .getContent()
             .get("application/json")
-            .getSchema()
-            .getProperties() :
+            .getSchema() :
         paths.get(pathName)
             .getPost()
             .getRequestBody()
             .getContent()
             .get("multipart/form-data")
-            .getSchema()
-            .getProperties();
+            .getSchema();
 
-    ReqBodyUIBuilder(result, properties);
+    Set<String> required = new HashSet<>(schema.getRequired());
+    ReqBodyUIBuilder(result, schema.getProperties(), required);
+
 
   }
 

@@ -83,12 +83,13 @@ public abstract class UIBuilder implements ConstantKeys {
     return pathVarsUI;
   }
 
-  public void ReqBodyUIBuilder(List<PropertyDescriptor<?>> result, Map<?,?> properties) {
+  public void ReqBodyUIBuilder(List<PropertyDescriptor<?>> result, Map<?,?> properties, Set<String> required) {
     LocalTypeDescriptor.Builder builder = simpleIntegrationTemplate.localType(REQ_BODY_PROPERTIES);
     properties.forEach((key, item) -> {
       Schema<?> itemSchema = (Schema<?>)item;
       String keyStr = key.toString();
 
+      // If the property is a document
       if (itemSchema.getFormat() != null && itemSchema.getFormat().equals("binary")) {
         DocumentPropertyDescriptor document = simpleIntegrationTemplate.documentProperty(keyStr)
             .label("Document " + Character.toUpperCase(keyStr.charAt(0)) + keyStr.substring(1))
@@ -99,9 +100,7 @@ public abstract class UIBuilder implements ConstantKeys {
             .build();
         result.add(document);
       } else {
-        // Set for determining which properties to mark as required
-        Set<?> requiredProperties = itemSchema.getRequired() != null ? new HashSet<>(itemSchema.getRequired()) : null;
-        LocalTypeDescriptor property = parseRequestBody(keyStr, itemSchema, requiredProperties);
+        LocalTypeDescriptor property = parseRequestBody(keyStr, itemSchema, required);
         if (property != null) {
           builder.properties(property.getProperties());
         }
