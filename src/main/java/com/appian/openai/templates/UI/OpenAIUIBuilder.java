@@ -11,11 +11,14 @@ import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.RefreshPolicy;
 import com.appian.connectedsystems.templateframework.sdk.configuration.TextPropertyDescriptor;
+import com.appian.connectedsystems.templateframework.sdk.connectiontesting.TestConnectionResult;
 import com.appian.openai.templates.OpenAICSP;
 
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import std.HTTP;
+import std.HttpResponse;
 import std.Util;
 
 public class OpenAIUIBuilder extends UIBuilder{

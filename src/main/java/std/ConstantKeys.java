@@ -14,8 +14,8 @@ import com.appian.connectedsystems.templateframework.sdk.configuration.TextPrope
 public interface ConstantKeys {
 
   // CSP Auth
-  String USERNAME = "username";
-  String PASSWORD = "password";
+  String API_KEY = "apiKey";
+  String ORGANIZATION = "organization";
 
 
   String CHOSEN_ENDPOINT = "chosenEndpoint";
