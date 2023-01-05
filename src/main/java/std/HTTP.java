@@ -29,11 +29,10 @@ public class HTTP implements ConstantKeys {
     defaultHeaders.add(new BasicHeader("Content-Type", "application/json"));
     defaultHeaders.add(new BasicHeader("Authorization", "Bearer " + token));
     if (org != null) defaultHeaders.add(new BasicHeader("OpenAI-Organization", org));
-    try (CloseableHttpClient client = HttpClientBuilder.create().setDefaultHeaders(defaultHeaders).build()) {
-      return client;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+
+    HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
+    return httpClientBuilder.setDefaultHeaders(defaultHeaders).build();
+
   }
 
   public static HttpResponse testAuth(SimpleConfiguration connectedSystemConfiguration) throws IOException {

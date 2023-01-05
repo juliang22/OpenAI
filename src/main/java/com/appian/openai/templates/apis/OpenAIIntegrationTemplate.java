@@ -1,5 +1,6 @@
 package com.appian.openai.templates.apis;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +36,12 @@ public class OpenAIIntegrationTemplate extends SimpleIntegrationTemplate impleme
       SimpleConfiguration connectedSystemConfiguration,
       PropertyPath propertyPath,
       ExecutionContext executionContext) {
+
+    try {
+      HTTP.testAuth(connectedSystemConfiguration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
 
     restBuilder.setIntegrationConfiguration(integrationConfiguration);
     return integrationConfiguration.setProperties(restBuilder.build());
