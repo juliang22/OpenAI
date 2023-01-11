@@ -93,7 +93,7 @@ public abstract class UIBuilder implements ConstantKeys {
       if (itemSchema.getFormat() != null && itemSchema.getFormat().equals("binary")) {
         DocumentPropertyDescriptor document = simpleIntegrationTemplate.documentProperty(keyStr)
             .label("Document " + Character.toUpperCase(keyStr.charAt(0)) + keyStr.substring(1))
-            .isRequired(true)
+            .isRequired(required.contains(keyStr) ? true : false)
             .isExpressionable(true)
             .refresh(RefreshPolicy.ALWAYS)
             .instructionText(itemSchema.getDescription())
@@ -149,8 +149,18 @@ public abstract class UIBuilder implements ConstantKeys {
   public LocalTypeDescriptor parseRequestBody(String key, Schema<?> item, Set<?> requiredProperties) {
 
     LocalTypeDescriptor.Builder builder = simpleIntegrationTemplate.localType(key);
-    // property could be one of many things
-    if (item.getOneOf() != null) {
+
+/*    if (item.getFormat() != null && item.getFormat().equals("binary")) {
+      DocumentPropertyDescriptor document = simpleIntegrationTemplate.documentProperty(key)
+          .label("Document " + Character.toUpperCase(key.charAt(0)) + key.substring(1))
+          .isRequired(requiredProperties.contains(key) ? true : false)
+          .isExpressionable(true)
+          .refresh(RefreshPolicy.ALWAYS)
+          .instructionText(item.getDescription())
+          .build();
+      return builder.property(document).build();
+    } else*/
+      if (item.getOneOf() != null) {    // property could be one of many things
       String description = item.getDescription() != null ? item.getDescription().replaceAll("\\n", "") : "";
       StringBuilder oneOfStrBuilder = new StringBuilder(description + "\n" + "'" + key + "'" + " can be one of the following " +
           "types: ");
@@ -232,8 +242,8 @@ public abstract class UIBuilder implements ConstantKeys {
       }
 
       String isRequired = requiredProperties != null && requiredProperties.contains(key) ?
-          "(Required) " + item.getDescription() :
-          item.getDescription();
+          "(Required) " + item.getDescription().replaceAll("\n", "") :
+          item.getDescription().replaceAll("\n", "");
       return simpleIntegrationTemplate.localType(key + "Container")
           .property(newProperty
               .isExpressionable(true)

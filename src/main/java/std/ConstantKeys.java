@@ -19,6 +19,8 @@ public interface ConstantKeys {
 
 
   String CHOSEN_ENDPOINT = "chosenEndpoint";
+  String ROOT_URL = "https://api.openai.com/v1";
+
   // API Types
   String JOBS = "jobs";
   String CLAIMS = "claims";
