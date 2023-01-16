@@ -1,13 +1,9 @@
 package com.appian.openai.templates.Execution;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,18 +11,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.entity.ByteArrayEntity;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.ContentBody;
-import org.apache.http.entity.mime.content.FileBody;
-import org.apache.http.entity.mime.content.InputStreamBody;
 
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
 import com.appian.connectedsystems.templateframework.sdk.IntegrationError.IntegrationErrorBuilder;
@@ -34,19 +22,11 @@ import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
 import com.appian.connectedsystems.templateframework.sdk.configuration.DocumentPropertyDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyState;
 import com.appian.connectedsystems.templateframework.sdk.diagnostics.IntegrationDesignerDiagnostic;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.theokanning.openai.OpenAiService;
-import com.theokanning.openai.image.CreateImageEditRequest;
-import com.theokanning.openai.image.CreateImageRequest;
 
 import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import okhttp3.RequestBody;
-import okhttp3.Response;
 import std.ConstantKeys;
 import std.HTTP;
 import std.HttpResponse;
@@ -64,7 +44,7 @@ public class Execute implements ConstantKeys {
   protected Gson gson;
   protected String reqBodyKey;
   protected long start;
-  protected  Map<String, Object> builtRequestBody = new HashMap<>();;
+  protected Map<String, Object> builtRequestBody = new HashMap<>();;
   protected HttpResponse HTTPResponse;
   protected Map<String,Object> requestDiagnostic;
 
@@ -229,87 +209,31 @@ public class Execute implements ConstantKeys {
 
 
       // adding file components to the multipart request body
+      Map<String, File> files = new HashMap();
       documents.forEach(docProperty -> {
         String docName = docProperty.getKey();
         Document doc = integrationConfiguration.getValue(docName);
         InputStream inputStream = doc.getInputStream();
 
-        File tempFile = null;
         try {
-          tempFile = File.createTempFile(doc.getFileName().replaceAll(".png",""), "." + doc.getExtension());
+          File tempFile = File.createTempFile(doc.getFileName().replaceAll(".png",""), "." + doc.getExtension());
           tempFile.deleteOnExit();
+          files.put(docName, tempFile);
           try (FileOutputStream out = new FileOutputStream(tempFile)) {
             IOUtils.copy(inputStream, out);
-          } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
-/*        builder.addBinaryBody("image", tempFile);*/
-
-/*        OpenAiService service = new OpenAiService("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");
-        CreateImageEditRequest req = CreateImageEditRequest.builder()
-            .prompt("penguin on the moon")
-            .size("256x256")
-            .n(1)
-            .responseFormat("url")
-            .build();
-*//*        service.createImageEdit(req, tempFile, null);*//*
-        service.createImageEdit(req, tempFile.getPath(), null);*/
-
-
-
-        OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(2, TimeUnit.MINUTES)
-            .connectTimeout(2, TimeUnit.MINUTES)
-            .readTimeout(2, TimeUnit.MINUTES)
-            .callTimeout(2, TimeUnit.MINUTES).build();
-        RequestBody requestBody = new MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("prompt", "tree on the moon")
-            .addFormDataPart("image", doc.getFileName(),
-                RequestBody.create(MediaType.parse("image/png"), tempFile))
-            .build();
-
-        Request request = new Request.Builder()
-            .header("Authorization", "Bearer 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")
-            .url("https://api.openai.com/v1/images/edits")
-            .post(requestBody)
-            .build();
-
-        try (Response response = client.newCall(request).execute()) {
-          if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-
-          System.out.println(response.body().string());
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-
-
       });
 
-
-      // Adding text components to the multipart request body
-/*      builtRequestBody.forEach((key, val) -> {
-        // Adding json to request body
-        String jsonEntity = null;
-        try {
-          jsonEntity = new StringEntity(new ObjectMapper().writeValueAsString(val)).toString();
-        } catch (UnsupportedEncodingException e) {
-          throw new RuntimeException(e);
-        } catch (JsonProcessingException e) {
-          throw new RuntimeException(e);
-        }
-        builder.addTextBody(key, jsonEntity, ContentType.APPLICATION_JSON);
-      });*/
-
-      HTTPResponse = HTTP.multipartPost(connectedSystemConfiguration, pathNameModified, builder.build());
+      HTTPResponse = HTTP.multipartPost(connectedSystemConfiguration, pathNameModified, builtRequestBody, files);
     } else { // No image: send as content-type json
-      StringEntity jsonEntity = new StringEntity(new ObjectMapper().writeValueAsString(builtRequestBody));
-      HTTPResponse = HTTP.post(connectedSystemConfiguration, pathNameModified, jsonEntity);
+      String jsonString = new ObjectMapper().writeValueAsString(builtRequestBody);
+      RequestBody body = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+      HTTPResponse = HTTP.post(connectedSystemConfiguration, pathNameModified, body);
     }
   }
 }
