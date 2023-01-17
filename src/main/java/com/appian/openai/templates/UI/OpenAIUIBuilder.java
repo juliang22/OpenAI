@@ -2,11 +2,13 @@ package com.appian.openai.templates.UI;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
+import com.appian.connectedsystems.templateframework.sdk.configuration.BooleanDisplayMode;
 import com.appian.connectedsystems.templateframework.sdk.configuration.DisplayHint;
 import com.appian.connectedsystems.templateframework.sdk.configuration.LocalTypeDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
@@ -15,7 +17,6 @@ import com.appian.connectedsystems.templateframework.sdk.configuration.TextPrope
 import com.appian.connectedsystems.templateframework.sdk.configuration.TypeReference;
 import com.appian.openai.templates.OpenAICSP;
 
-import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import std.Util;
@@ -27,26 +28,13 @@ public class OpenAIUIBuilder extends UIBuilder{
     setOpenAPI(api);
     setSimpleIntegrationTemplate(simpleIntegrationTemplate);
 
-    List<CustomEndpoint> customEndpoints = Arrays.asList(
-        new CustomEndpoint(OPENAI, JSONLINES, "/JSONLines","Creates a JSON " +
-            "Lines file from Appian data (https://jsonlines.readthedocs.io/en/latest/)"));
+    List<CustomEndpoint> customEndpoints = Collections.singletonList(new CustomEndpoint(OPENAI, JSONLINES, "/JSONLines",
+        "Creates a JSON " + "Lines file from Appian data (https://jsonlines.readthedocs.io/en/latest/)"));
     setDefaultEndpoints(customEndpoints);
   }
 
   public void setOpenAPI(String api) {
     switch (api) {
-      case POLICIES:
-        this.openAPI = OpenAICSP.policiesOpenApi;
-        break;
-      case CLAIMS:
-        this.openAPI = OpenAICSP.claimsOpenApi;
-        break;
-      case JOBS:
-        this.openAPI = OpenAICSP.jobsOpenApi;
-        break;
-      case ACCOUNTS:
-        this.openAPI = OpenAICSP.accountsOpenApi;
-        break;
       case OPENAI:
         this.openAPI = OpenAICSP.openaiOpenApi;
         break;
@@ -104,9 +92,11 @@ public class OpenAIUIBuilder extends UIBuilder{
     switch (restOperation) {
       case (GET):
         buildGet(result);
+        buildFileCatcher(result);
         break;
       case (POST):
         buildPost(result);
+        buildFileCatcher(result);
         break;
       case (PATCH):
         buildPatch(result);
@@ -120,13 +110,9 @@ public class OpenAIUIBuilder extends UIBuilder{
         buildJsonLines(result);
         break;
     }
-
   }
 
   public void buildGet(List<PropertyDescriptor<?>> result) {
-
-    Operation get = paths.get(pathName).getGet();
-
   }
 
   public void buildPost(List<PropertyDescriptor<?>> result) {
@@ -154,7 +140,7 @@ public class OpenAIUIBuilder extends UIBuilder{
     Set<String> required = new HashSet<>(schema.getRequired());
     ReqBodyUIBuilder(result, schema.getProperties(), required);
 
-
+   /* if (integrationConfiguration.getValue(""))*/
   }
 
   public void buildPatch(List<PropertyDescriptor<?>> result) {
@@ -225,4 +211,35 @@ public class OpenAIUIBuilder extends UIBuilder{
         .refresh(RefreshPolicy.ALWAYS)
         .build());
   }
+
+  public void buildFileCatcher(List<PropertyDescriptor<?>> result) {
+    result.add(
+        simpleIntegrationTemplate.booleanProperty(IS_FILE_EXPECTED)
+            .label("Will there be a file returned in the response?")
+            .displayMode(BooleanDisplayMode.RADIO_BUTTON)
+            .refresh(RefreshPolicy.ALWAYS)
+            .isExpressionable(true)
+            .build()
+    );
+    PropertyDescriptor<?> isFileExpected = integrationConfiguration.getProperty(IS_FILE_EXPECTED);
+    if (isFileExpected != null && integrationConfiguration.getValue(IS_FILE_EXPECTED).equals(true)) {
+      result.add(
+          simpleIntegrationTemplate.folderProperty(FOLDER)
+              .isExpressionable(true)
+              .isRequired(true)
+              .label("Response File Save Location")
+              .instructionText("Choose the folder you would like to save the response file to.")
+              .build()
+      );
+      result.add(
+          simpleIntegrationTemplate.textProperty(SAVED_FILENAME)
+              .isExpressionable(true)
+              .isRequired(true)
+              .label("Response File Name")
+              .instructionText("Choose the name of the file received in the response.")
+              .build()
+      );
+    }
+  }
+
 }

@@ -38,7 +38,10 @@ public interface ConstantKeys {
 
   String JSONLINES = "JSONLINES";
   String FOLDER = "folder";
+  String SAVED_FILENAME = "savedFileName";
   String OUTPUT_FILENAME = "outputFileName";
+
+  String IS_FILE_EXPECTED = "isFileExpected";
 
   Set<String> PATHS_TO_REMOVE = new HashSet<>(Arrays.asList("/answers", "/classifications", "/engines", "/engines/{engine_id}",
    "/engines/{engine_id}/search"));

@@ -1,17 +1,20 @@
 package std;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.http.Header;
-import org.apache.http.message.BasicHeader;
-
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
+import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
+import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
+import com.appian.openai.templates.Execution.Execute;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,25 +25,26 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
+import okio.Buffer;
+import okio.BufferedSource;
 
 public class HTTP implements ConstantKeys {
+protected Execute executionService;
+
+  public HTTP(Execute executionService) {
+    this.executionService = executionService;
+  }
 
   public static OkHttpClient getHTTPClient(SimpleConfiguration connectedSystemConfiguration, String contentType) {
     final String token = connectedSystemConfiguration.getValue(API_KEY);
     final String org = connectedSystemConfiguration.getValue(ORGANIZATION);
 
-    List<Header> defaultHeaders = new ArrayList<>();
-    defaultHeaders.add(new BasicHeader("Content-Type", contentType));
-    defaultHeaders.add(new BasicHeader("Authorization", "Bearer " + token));
-    if (org != null)
-      defaultHeaders.add(new BasicHeader("OpenAI-Organization", org));
-
-/*    HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
-    return httpClientBuilder.setDefaultHeaders(defaultHeaders).build();*/
     return new OkHttpClient.Builder().connectTimeout(2, TimeUnit.MINUTES)
         .connectTimeout(2, TimeUnit.MINUTES)
         .readTimeout(2, TimeUnit.MINUTES)
         .callTimeout(2, TimeUnit.MINUTES)
+        .writeTimeout(2, TimeUnit.MINUTES)
         .addInterceptor(chain -> {
           Request.Builder newRequest = chain.request()
               .newBuilder()
@@ -55,40 +59,89 @@ public class HTTP implements ConstantKeys {
 
   public static HttpResponse testAuth(SimpleConfiguration connectedSystemConfiguration) throws IOException {
     final String testURL = "https://api.openai.com/v1/models";
-    return get(connectedSystemConfiguration, testURL);
-  }
-
-  public static HttpResponse executeRequest(OkHttpClient client, Request request) throws IOException {
-
+    Request request = new Request.Builder().url(testURL).build();
+    OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "application/json");
     try (Response response = client.newCall(request).execute()) {
       HashMap<String,Object> responseEntity = new ObjectMapper().readValue(response.body().string(),
           new TypeReference<HashMap<String,Object>>() {
           });
       return new HttpResponse(response.code(), response.message(), responseEntity);
     }
-
-/*    try (CloseableHttpResponse response = client.execute(request)) {
-      HashMap<String,Object> responseEntity = new ObjectMapper()
-          .readValue(EntityUtils.toString(response.getEntity()), new TypeReference<HashMap<String,Object>>() {});
-      return new HttpResponse(response.getStatusLine().getStatusCode(), response.getStatusLine().getReasonPhrase(), responseEntity);
-    }*/
   }
 
-  public static HttpResponse get(SimpleConfiguration connectedSystemConfiguration, String url) throws IOException {
+  public  HttpResponse executeRequest(OkHttpClient client, Request request) throws IOException {
+
+    try (Response response = client.newCall(request).execute()) {
+      ResponseBody body = response.body();
+      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(body.string(), new TypeReference<HashMap<String,Object>>() {});
+      int code = response.code();
+      String message = response.message();
+
+      // Set error if error is returned in response
+      if (code > 400 || !response.isSuccessful()) {
+        executionService.setError("Error Code: " + code, message, response.body().string());
+      }
+
+      // If OpenAI returns a document back, capture the document
+      Object data = responseEntity.get("data");
+      if (data != null &&
+          data instanceof List &&
+          ((List<?>)data).size() > 0 &&
+          ((List<?>)data).get(0) instanceof Map &&
+          ((Map)((List<?>)data).get(0)).containsKey("b64_json")) {
+
+        //Get the b64_json and convert to input stream
+        String bytesStr = (String)((Map)((List)responseEntity.get("data")).get(0)).get("b64_json");
+        byte[] decodedBytes = Base64.getDecoder().decode(bytesStr);
+        InputStream inputStream = new ByteArrayInputStream(decodedBytes);
+
+        // If there is an incoming file, save it in the desired location with the desired name
+        // Set errors if no name or file location has been chosen
+        PropertyDescriptor<?> hasSaveFolder = executionService.getIntegrationConfiguration().getProperty(FOLDER);
+        PropertyDescriptor<?> hasSaveFileName = executionService.getIntegrationConfiguration().getProperty(SAVED_FILENAME);
+        if (hasSaveFolder == null) {
+          executionService.setError(
+              "Could not save file received from api.",
+              "Set desired folder location to save the incoming file.",
+              ""
+          );
+          return new HttpResponse(code, message, responseEntity);
+        } else if (hasSaveFileName == null) {
+          executionService.setError(
+              "Could not save file received from api.",
+              "Set desired file name save the incoming file.",
+              ""
+          );
+          return new HttpResponse(code, message, responseEntity);
+        }
+
+        Long folderID = executionService.getIntegrationConfiguration().getValue(FOLDER);
+        String fileName = executionService.getIntegrationConfiguration().getValue(SAVED_FILENAME);
+        Document document = executionService
+            .getExecutionContext()
+            .getDocumentDownloadService()
+            .downloadDocument(inputStream, folderID, fileName);
+        return new HttpResponse(code, message, responseEntity, document);
+      }
+      // If no document, just return the response
+      return new HttpResponse(response.code(), response.message(), responseEntity);
+    }
+  }
+
+  public HttpResponse get(String url) throws IOException {
     Request request = new Request.Builder().url(url).build();
-    OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "application/json");
+    OkHttpClient client = getHTTPClient(executionService.getConnectedSystemConfiguration(), "application/json");
     return executeRequest(client, request);
   }
 
-  public static HttpResponse post(SimpleConfiguration connectedSystemConfiguration, String url, RequestBody body)
+  public HttpResponse post(String url, RequestBody body)
       throws IOException {
     Request request = new Request.Builder().url(url).post(body).build();
-    OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "application/json");
+    OkHttpClient client = getHTTPClient(executionService.getConnectedSystemConfiguration(), "application/json");
     return executeRequest(client, request);
   }
 
-  public static HttpResponse multipartPost(
-      SimpleConfiguration connectedSystemConfiguration, String url, Map<String,Object> requestBody, Map<String,File> files)
+  public HttpResponse multipartPost(String url, Map<String,Object> requestBody, Map<String,File> files)
       throws IOException {
 
     MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
@@ -111,12 +164,12 @@ public class HTTP implements ConstantKeys {
     // Adding files to the multipart builder
     files.forEach((fileName, file) -> {
       RequestBody requestFile = RequestBody.create(file, MediaType.parse("multipart/form-data"));
-      MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
+      MultipartBody.Part filePart = MultipartBody.Part.createFormData(fileName, file.getName(), requestFile);
       multipartBuilder.addPart(filePart);
     });
 
     // Getting the client/request and executing the request
-    OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "multipart/form-data");
+    OkHttpClient client = getHTTPClient(executionService.getConnectedSystemConfiguration(), "multipart/form-data");
     Request request = new Request.Builder().url(url).post(multipartBuilder.build()).build();
     return executeRequest(client, request);
   }

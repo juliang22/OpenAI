@@ -15,8 +15,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
 
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
 import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
@@ -50,11 +48,11 @@ public class Execute implements ConstantKeys {
   protected IntegrationErrorBuilder error = null;
   protected Gson gson;
   protected String reqBodyKey;
-  protected long start;
+  protected Long start;
   protected Map<String, Object> builtRequestBody = new HashMap<>();
   protected HttpResponse HTTPResponse;
   protected Map<String,Object> requestDiagnostic;
-
+  protected HTTP httpService;
 
   public Execute(SimpleConfiguration integrationConfiguration, SimpleConfiguration connectedSystemConfiguration,
       ExecutionContext executionContext) {
@@ -62,6 +60,7 @@ public class Execute implements ConstantKeys {
     this.connectedSystemConfiguration = connectedSystemConfiguration;
     this.integrationConfiguration = integrationConfiguration;
     this.executionContext = executionContext;
+    this.httpService = new HTTP(this);
     String[] pathData = integrationConfiguration.getValue(CHOSEN_ENDPOINT).toString().split(":");
     this.api = pathData[0];
     this.restOperation = pathData[1];
@@ -72,6 +71,18 @@ public class Execute implements ConstantKeys {
             integrationConfiguration.getProperty(REQ_BODY).getLabel() :
             null;
     buildPathNameWithPathVars();
+  }
+
+  public SimpleConfiguration getConnectedSystemConfiguration() {
+    return connectedSystemConfiguration;
+  }
+
+  public SimpleConfiguration getIntegrationConfiguration() {
+    return integrationConfiguration;
+  }
+
+  public ExecutionContext getExecutionContext() {
+    return executionContext;
   }
 
   public IntegrationErrorBuilder getError() { return this.error; }
@@ -110,7 +121,6 @@ public class Execute implements ConstantKeys {
   public Map<String,Object> getResponse() {
     Map<String,Object> response = new HashMap<>();
 
-    //TODO: Document handling
     if (HTTPResponse != null) {
       response.put("Response",HTTPResponse.getResponse());
       response.put("Status Code: ", HTTPResponse.getStatusCode());
@@ -211,7 +221,7 @@ public class Execute implements ConstantKeys {
   }
 
   public void executeGetOrDelete() throws IOException {
-    this.HTTPResponse = HTTP.get(connectedSystemConfiguration, pathNameModified);
+    this.HTTPResponse = httpService.get(pathNameModified);
   }
 
 
@@ -220,7 +230,7 @@ public class Execute implements ConstantKeys {
     HashMap<String, PropertyState> reqBodyProperties = integrationConfiguration.getValue(reqBodyKey);
     if (reqBodyProperties == null || reqBodyProperties.size() <= 0) {
       RequestBody body = RequestBody.create("", null);
-      HTTPResponse = HTTP.post(connectedSystemConfiguration, pathNameModified, body);
+      HTTPResponse = httpService.post(pathNameModified, body);
       return;
     }
 
@@ -238,10 +248,6 @@ public class Execute implements ConstantKeys {
 
     // If there are documents, send multipart post
     if (documents.size() > 0) {
-      MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-      builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-
-
       // adding file components to the multipart request body
       Map<String,File> files = new HashMap<>();
       documents.forEach(docProperty -> {
@@ -264,11 +270,11 @@ public class Execute implements ConstantKeys {
         }
       });
 
-      HTTPResponse = HTTP.multipartPost(connectedSystemConfiguration, pathNameModified, builtRequestBody, files);
+      HTTPResponse = httpService.multipartPost(pathNameModified, builtRequestBody, files);
     } else { // No image: Just sent request body as content-type/json
       String jsonString = new ObjectMapper().writeValueAsString(builtRequestBody);
       RequestBody body = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-      HTTPResponse = HTTP.post(connectedSystemConfiguration, pathNameModified, body);
+      HTTPResponse = httpService.post(pathNameModified, body);
     }
   }
 
@@ -277,7 +283,6 @@ public class Execute implements ConstantKeys {
     HashMap<String, PropertyState> reqBodyProperties = integrationConfiguration.getValue(reqBodyKey);
     buildRequestBodyJSON(reqBodyProperties);
     if (getError() != null) return;
-
 
     JsonObject jsonObject = gson.toJsonTree(builtRequestBody).getAsJsonObject();
     JsonArray jsonArray = jsonObject.getAsJsonArray("toJsonLines");
@@ -296,14 +301,11 @@ public class Execute implements ConstantKeys {
       jsonLines.append(element.toString()).append("\n");
     }
 
-
     ByteArrayInputStream inputStream = new ByteArrayInputStream(jsonLines.toString().getBytes(StandardCharsets.UTF_8));
     String fileName = builtRequestBody.get(OUTPUT_FILENAME).toString();
     Long folderID = integrationConfiguration.getValue(FOLDER);
     Document document = executionContext.getDocumentDownloadService().downloadDocument(inputStream, folderID, fileName);
     HTTPResponse = new HttpResponse(200, "JSON Lines file successfully created.", null);
     HTTPResponse.setDocument(document);
-
-
   }
 }

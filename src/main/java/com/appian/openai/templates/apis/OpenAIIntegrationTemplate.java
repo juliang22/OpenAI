@@ -1,8 +1,6 @@
 package com.appian.openai.templates.apis;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
@@ -17,7 +15,6 @@ import com.appian.openai.templates.Execution.Execute;
 import com.appian.openai.templates.UI.OpenAIUIBuilder;
 
 import std.ConstantKeys;
-import std.HTTP;
 
 @TemplateId(name = "OpenAIIntegrationTemplate")
 @IntegrationTemplateType(IntegrationTemplateRequestPolicy.READ_AND_WRITE)

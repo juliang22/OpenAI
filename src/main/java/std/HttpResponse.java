@@ -17,6 +17,13 @@ public class HttpResponse {
         this.statusCode = statusCode;
     }
 
+    public HttpResponse(int statusCode, String statusLine, HashMap<String, Object> result, Document document) {
+        this.response = result;
+        this.statusLine = statusLine;
+        this.statusCode = statusCode;
+        this.document = document;
+    }
+
     public void setDocument(Document document) {
         this.document = document;
     }

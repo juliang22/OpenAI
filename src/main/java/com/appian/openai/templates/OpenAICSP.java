@@ -5,6 +5,7 @@ import com.appian.connectedsystems.simplified.sdk.connectiontesting.SimpleTestab
 import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
 import com.appian.connectedsystems.templateframework.sdk.TemplateId;
 import com.appian.connectedsystems.templateframework.sdk.connectiontesting.TestConnectionResult;
+import com.appian.openai.templates.Execution.Execute;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import std.ConstantKeys;
@@ -17,12 +18,6 @@ public class OpenAICSP extends SimpleTestableConnectedSystemTemplate implements 
 
 
   public static final ClassLoader classLoader = OpenAICSP.class.getClassLoader();
-  public static final OpenAPI claimsOpenApi = Util.getOpenApi("com/appian/openai/templates/claims.yaml", classLoader);
-  public static final OpenAPI policiesOpenApi = Util.getOpenApi("com/appian/openai/templates/policies" +
-      ".yaml", classLoader);
-  public static final OpenAPI jobsOpenApi = Util.getOpenApi("com/appian/openai/templates/jobs.yaml", classLoader);
-  public static final OpenAPI accountsOpenApi = Util.getOpenApi("com/appian/openai/templates/accounts" +
-      ".yaml", classLoader);
 
   public static final OpenAPI openaiOpenApi = Util.getOpenApi("com/appian/openai/templates/openai" +
       ".yaml", classLoader);
