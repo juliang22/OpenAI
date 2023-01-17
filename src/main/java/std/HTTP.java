@@ -93,6 +93,7 @@ public class HTTP implements ConstantKeys {
 
     MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
 
+    // Adding text request body json to the multipart builder
     requestBody.forEach((key, val) -> {
       if (val instanceof String) {
         multipartBuilder.addFormDataPart(key, ((String)val));
@@ -107,14 +108,14 @@ public class HTTP implements ConstantKeys {
       }
     });
 
+    // Adding files to the multipart builder
     files.forEach((fileName, file) -> {
-      /*      multipartBuilder.addFormDataPart(fileName, file.getName(), RequestBody.create(MediaType.parse("image/png"), file));*/
-
       RequestBody requestFile = RequestBody.create(file, MediaType.parse("multipart/form-data"));
       MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
       multipartBuilder.addPart(filePart);
     });
 
+    // Getting the client/request and executing the request
     OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "multipart/form-data");
     Request request = new Request.Builder().url(url).post(multipartBuilder.build()).build();
     return executeRequest(client, request);
