@@ -32,20 +32,22 @@ public class HTTP implements ConstantKeys {
     List<Header> defaultHeaders = new ArrayList<>();
     defaultHeaders.add(new BasicHeader("Content-Type", contentType));
     defaultHeaders.add(new BasicHeader("Authorization", "Bearer " + token));
-    if (org != null) defaultHeaders.add(new BasicHeader("OpenAI-Organization", org));
+    if (org != null)
+      defaultHeaders.add(new BasicHeader("OpenAI-Organization", org));
 
 /*    HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
     return httpClientBuilder.setDefaultHeaders(defaultHeaders).build();*/
-    return new OkHttpClient.Builder()
-        .connectTimeout(2, TimeUnit.MINUTES)
+    return new OkHttpClient.Builder().connectTimeout(2, TimeUnit.MINUTES)
         .connectTimeout(2, TimeUnit.MINUTES)
         .readTimeout(2, TimeUnit.MINUTES)
         .callTimeout(2, TimeUnit.MINUTES)
         .addInterceptor(chain -> {
-          Request.Builder newRequest = chain.request().newBuilder()
+          Request.Builder newRequest = chain.request()
+              .newBuilder()
               .addHeader("Content-Type", contentType)
               .addHeader("Authorization", "Bearer " + token);
-          if (org != null) newRequest.addHeader("OpenAI-Organization", org);
+          if (org != null)
+            newRequest.addHeader("OpenAI-Organization", org);
           return chain.proceed(newRequest.build());
         })
         .build();
@@ -59,8 +61,9 @@ public class HTTP implements ConstantKeys {
   public static HttpResponse executeRequest(OkHttpClient client, Request request) throws IOException {
 
     try (Response response = client.newCall(request).execute()) {
-      HashMap<String, Object> responseEntity = new ObjectMapper()
-          .readValue(response.body().string(), new TypeReference<HashMap<String, Object>>() {});
+      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(response.body().string(),
+          new TypeReference<HashMap<String,Object>>() {
+          });
       return new HttpResponse(response.code(), response.message(), responseEntity);
     }
 
@@ -71,54 +74,50 @@ public class HTTP implements ConstantKeys {
     }*/
   }
 
-
   public static HttpResponse get(SimpleConfiguration connectedSystemConfiguration, String url) throws IOException {
-    Request request = new Request.Builder()
-        .url(url)
-        .build();
+    Request request = new Request.Builder().url(url).build();
     OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "application/json");
     return executeRequest(client, request);
   }
 
-  public static HttpResponse post(SimpleConfiguration connectedSystemConfiguration, String url, RequestBody body) throws IOException {
-    Request request = new Request.Builder()
-        .url(url)
-        .post(body)
-        .build();
+  public static HttpResponse post(SimpleConfiguration connectedSystemConfiguration, String url, RequestBody body)
+      throws IOException {
+    Request request = new Request.Builder().url(url).post(body).build();
     OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "application/json");
     return executeRequest(client, request);
   }
 
   public static HttpResponse multipartPost(
-      SimpleConfiguration connectedSystemConfiguration,
-      String url,
-      Map<String,Object>  requestBody,
-      Map<String, File> files) throws IOException {
+      SimpleConfiguration connectedSystemConfiguration, String url, Map<String,Object> requestBody, Map<String,File> files)
+      throws IOException {
 
-    MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
-        .setType(MultipartBody.FORM);
+    MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
 
     requestBody.forEach((key, val) -> {
-      String jsonString = null;
-      try {
-        jsonString = new ObjectMapper().writeValueAsString(val);
-      } catch (JsonProcessingException e) {
-        throw new RuntimeException(e);
+      if (val instanceof String) {
+        multipartBuilder.addFormDataPart(key, ((String)val));
+      } else {
+        String jsonString = null;
+        try {
+          jsonString = new ObjectMapper().writeValueAsString(val);
+        } catch (JsonProcessingException e) {
+          throw new RuntimeException(e);
+        }
+        multipartBuilder.addFormDataPart(key, jsonString);
       }
-      multipartBuilder.addFormDataPart(key, jsonString);
     });
 
     files.forEach((fileName, file) -> {
-      multipartBuilder.addFormDataPart(fileName, file.getName(), RequestBody.create(MediaType.parse("image/png"), file));
+      /*      multipartBuilder.addFormDataPart(fileName, file.getName(), RequestBody.create(MediaType.parse("image/png"), file));*/
+
+      RequestBody requestFile = RequestBody.create(file, MediaType.parse("multipart/form-data"));
+      MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
+      multipartBuilder.addPart(filePart);
     });
 
     OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "multipart/form-data");
-    Request request = new Request.Builder()
-        .url(url)
-        .post(multipartBuilder.build())
-        .build();
+    Request request = new Request.Builder().url(url).post(multipartBuilder.build()).build();
     return executeRequest(client, request);
   }
-
 
 }

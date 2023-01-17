@@ -43,7 +43,7 @@ public class ClaimsIntegrationTemplate extends SimpleIntegrationTemplate impleme
       SimpleConfiguration connectedSystemConfiguration,
       ExecutionContext executionContext) {
 
-    Execute execute = new Execute(integrationConfiguration, connectedSystemConfiguration);
+    Execute execute = new Execute(integrationConfiguration, connectedSystemConfiguration, executionContext);
     try {
       execute.build();
     } catch (IOException e) {

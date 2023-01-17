@@ -1,9 +1,12 @@
 package com.appian.openai.templates.Execution;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,15 +18,23 @@ import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.mozilla.javascript.tools.idswitch.IdValuePair;
 
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
+import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
 import com.appian.connectedsystems.templateframework.sdk.IntegrationError.IntegrationErrorBuilder;
 import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
 import com.appian.connectedsystems.templateframework.sdk.configuration.DocumentPropertyDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyState;
 import com.appian.connectedsystems.templateframework.sdk.diagnostics.IntegrationDesignerDiagnostic;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SequenceWriter;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonWriter;
 
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
@@ -40,6 +51,7 @@ public class Execute implements ConstantKeys {
   protected String restOperation;
   protected SimpleConfiguration integrationConfiguration;
   protected SimpleConfiguration connectedSystemConfiguration;
+  protected ExecutionContext executionContext;
   protected IntegrationErrorBuilder error = null;
   protected Gson gson;
   protected String reqBodyKey;
@@ -49,10 +61,12 @@ public class Execute implements ConstantKeys {
   protected Map<String,Object> requestDiagnostic;
 
 
-  public Execute(SimpleConfiguration integrationConfiguration, SimpleConfiguration connectedSystemConfiguration) {
+  public Execute(SimpleConfiguration integrationConfiguration, SimpleConfiguration connectedSystemConfiguration,
+      ExecutionContext executionContext) {
     this.start = System.currentTimeMillis();
     this.connectedSystemConfiguration = connectedSystemConfiguration;
     this.integrationConfiguration = integrationConfiguration;
+    this.executionContext = executionContext;
     String[] pathData = integrationConfiguration.getValue(CHOSEN_ENDPOINT).toString().split(":");
     this.api = pathData[0];
     this.restOperation = pathData[1];
@@ -105,6 +119,9 @@ public class Execute implements ConstantKeys {
     if (HTTPResponse != null) {
       response.put("Response",HTTPResponse.getResponse());
       response.put("Status Code: ", HTTPResponse.getStatusCode());
+      if (HTTPResponse.getDocument() != null) {
+        response.put("Document: ", HTTPResponse.getDocument());
+      }
     }
     return response;
   }
@@ -120,11 +137,16 @@ public class Execute implements ConstantKeys {
         break;
   /*    case (DELETE):
         executeDelete();*/
+
+      //  custom endpoint
+      case (JSONLINES):
+        executeJsonLines();
+        break;
     }
   }
 
 
-  public Map<String,Object> buildReqBodyJSON(String key, PropertyState val) {
+  public Map<String,Object> parseReqBodyJSON(String key, PropertyState val) {
 
     Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN"));
     Map<String, Object> propertyMap = new HashMap<>();
@@ -138,7 +160,7 @@ public class Execute implements ConstantKeys {
       if (val.getValue() instanceof ArrayList) {
         List<Map<String, Object>> propertyArr = new ArrayList<>();
         ((ArrayList<?>)val.getValue()).forEach(property -> {
-          Map<String,Object> nestedVal = buildReqBodyJSON(property.toString(), ((PropertyState)property));
+          Map<String,Object> nestedVal = parseReqBodyJSON(property.toString(), ((PropertyState)property));
           propertyArr.add((Map<String,Object>)nestedVal.get(property.toString()));
         });
         propertyMap.put(key, propertyArr);
@@ -146,7 +168,7 @@ public class Execute implements ConstantKeys {
         // If value is an object, recursively add nested elements to a map
         ((Map<String,PropertyState>)val.getValue()).forEach((innerKey, innerVal) -> {
           // If map already contains the key to nested maps of values, add key/val pair to that map
-          Map<String,Object> newKeyVal = buildReqBodyJSON(innerKey, innerVal);
+          Map<String,Object> newKeyVal = parseReqBodyJSON(innerKey, innerVal);
           if (propertyMap.containsKey(key)) {
             ((Map<String, Object>)propertyMap.get(key)).put(innerKey, newKeyVal.get(innerKey));
           } else {
@@ -156,6 +178,24 @@ public class Execute implements ConstantKeys {
       }
     }
     return propertyMap;
+  }
+
+  public void buildRequestBodyJSON(HashMap<String, PropertyState> reqBodyProperties) {
+    // Converting PropertyState request body from ui into Map<String, Object> where objects could be more nested JSON
+    reqBodyProperties.forEach((key, val) -> {
+
+      // If flat level value has nested values, recursively insert those values, otherwise, insert the value
+      Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN", "DOCUMENT"));
+
+      autogeneratedKeyInReqBodyError(val.getValue().toString()); // Set error if autogenerated key is in Req Body
+
+      // flatValue could be a string or more nested Json of type Map<String, Object>
+      Object flatValue = notNested.contains(val.getType().getTypeDisplayName()) ?
+          val.getValue() : parseReqBodyJSON(key, val).get(key);
+
+      // Build the request body json
+      builtRequestBody.put(key, flatValue);
+    });
   }
 
   public void autogeneratedKeyInReqBodyError(String key) {
@@ -176,24 +216,15 @@ public class Execute implements ConstantKeys {
   public void executePostOrPatch() throws IOException {
 
     HashMap<String, PropertyState> reqBodyProperties = integrationConfiguration.getValue(reqBodyKey);
-
-    if (reqBodyProperties != null && reqBodyProperties.size() > 0) {
-      reqBodyProperties.entrySet().forEach(property -> {
-        String key = property.getKey();
-        PropertyState val = property.getValue();
-
-        // If flat level value has nested values, recursively insert those values, otherwise, insert the value
-        Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN", "DOCUMENT"));
-
-        autogeneratedKeyInReqBodyError(val.getValue().toString()); // Set error if autogenerated key is in Req Body
-
-        Object flatValue = notNested.contains(val.getType().getTypeDisplayName()) ?
-            val.getValue() : buildReqBodyJSON(key, val).get(key);
-
-        // Build the request body json
-        builtRequestBody.put(key, flatValue);
-      });
+    if (reqBodyProperties == null || reqBodyProperties.size() <= 0) {
+      RequestBody body = RequestBody.create("", null);
+      HTTPResponse = HTTP.post(connectedSystemConfiguration, pathNameModified, body);
+      return;
     }
+
+    buildRequestBodyJSON(reqBodyProperties);
+    if (getError() != null) return;
+
 
     // Checking if there are documents to add to the request body
     Set<DocumentPropertyDescriptor> documents = new HashSet<>();
@@ -203,6 +234,7 @@ public class Execute implements ConstantKeys {
       }
     });
 
+    // If there are documents, send multipart post
     if (documents.size() > 0) {
       MultipartEntityBuilder builder = MultipartEntityBuilder.create();
       builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
@@ -216,7 +248,8 @@ public class Execute implements ConstantKeys {
         InputStream inputStream = doc.getInputStream();
 
         try {
-          File tempFile = File.createTempFile(doc.getFileName().replaceAll(".png",""), "." + doc.getExtension());
+          String fileNameWithoutExtension = doc.getFileName().substring(0, doc.getFileName().lastIndexOf("."));
+          File tempFile = File.createTempFile(fileNameWithoutExtension, "." + doc.getExtension());
           tempFile.deleteOnExit();
           files.put(docName, tempFile);
           try (FileOutputStream out = new FileOutputStream(tempFile)) {
@@ -230,10 +263,55 @@ public class Execute implements ConstantKeys {
       });
 
       HTTPResponse = HTTP.multipartPost(connectedSystemConfiguration, pathNameModified, builtRequestBody, files);
-    } else { // No image: send as content-type json
+    } else { // No image: Just sent request body as content-type/json
       String jsonString = new ObjectMapper().writeValueAsString(builtRequestBody);
       RequestBody body = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
       HTTPResponse = HTTP.post(connectedSystemConfiguration, pathNameModified, body);
     }
+  }
+
+
+
+  public void executeJsonLines() throws IOException {
+    HashMap<String, PropertyState> reqBodyProperties = integrationConfiguration.getValue(reqBodyKey);
+    buildRequestBodyJSON(reqBodyProperties);
+    if (getError() != null) return;
+
+    JsonObject jsonObject = gson.toJsonTree(builtRequestBody).getAsJsonObject();
+    JsonArray jsonArray = jsonObject.getAsJsonArray("toJsonLines");
+    String jsonLines = "";
+    for (JsonElement element : jsonArray) {
+      jsonLines += element.toString() + "\n";
+    }
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(jsonLines.getBytes(StandardCharsets.UTF_8));
+
+/*    JsonElement jsonElement = gson.toJsonTree(builtRequestBody.get("toJsonLines"));*/
+    String fileName = builtRequestBody.get(OUTPUT_FILENAME).toString();
+    Long folderID = integrationConfiguration.getValue(FOLDER);
+/*    ByteArrayInputStream inputStream = new ByteArrayInputStream(gson.toJson(jsonElement).getBytes(StandardCharsets.UTF_8));*/
+    Document document = executionContext.getDocumentDownloadService().downloadDocument(inputStream, folderID, fileName);
+    HTTPResponse = new HttpResponse(200, "JSON Lines file successfully created.", null);
+    HTTPResponse.setDocument(document);
+/*
+    try {
+      FileWriter fileWriter = new FileWriter(builtRequestBody.get(OUTPUT_FILENAME) + ".jsonl");
+      JsonWriter jsonWriter = new JsonWriter(fileWriter);
+      jsonWriter.setIndent(" ");
+      gson.toJson(jsonElement, jsonWriter);
+      jsonWriter.flush();
+      jsonWriter.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    final File outputFile = new File("data.jsonl");
+    final JsonMapper mapper = new JsonMapper();
+    try (SequenceWriter seq = mapper.writer()
+        .withRootValueSeparator("\n") // Important! Default value separator is single space
+        .writeValues(outputFile)) {
+      seq.write(gson.toJsonTree(builtRequestBody));
+    }
+*/
+
   }
 }

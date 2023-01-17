@@ -4,21 +4,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
+import com.appian.connectedsystems.templateframework.sdk.configuration.DisplayHint;
+import com.appian.connectedsystems.templateframework.sdk.configuration.LocalTypeDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.RefreshPolicy;
 import com.appian.connectedsystems.templateframework.sdk.configuration.TextPropertyDescriptor;
-import com.appian.connectedsystems.templateframework.sdk.connectiontesting.TestConnectionResult;
+import com.appian.connectedsystems.templateframework.sdk.configuration.TypeReference;
 import com.appian.openai.templates.OpenAICSP;
 
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
-import std.HTTP;
-import std.HttpResponse;
 import std.Util;
 
 public class OpenAIUIBuilder extends UIBuilder{
@@ -27,7 +26,11 @@ public class OpenAIUIBuilder extends UIBuilder{
     super();
     setOpenAPI(api);
     setSimpleIntegrationTemplate(simpleIntegrationTemplate);
-    setDefaultEndpoints();
+
+    List<CustomEndpoint> customEndpoints = Arrays.asList(
+        new CustomEndpoint(OPENAI, JSONLINES, "/JSONLines","Creates a JSON " +
+            "Lines file from Appian data (https://jsonlines.readthedocs.io/en/latest/)"));
+    setDefaultEndpoints(customEndpoints);
   }
 
   public void setOpenAPI(String api) {
@@ -111,6 +114,11 @@ public class OpenAIUIBuilder extends UIBuilder{
       case (DELETE):
         buildDelete(result);
         break;
+
+      //  custom endpoint
+      case (JSONLINES):
+        buildJsonLines(result);
+        break;
     }
 
   }
@@ -153,5 +161,68 @@ public class OpenAIUIBuilder extends UIBuilder{
   }
 
   public void buildDelete(List<PropertyDescriptor<?>> result) {
+  }
+
+  public void buildJsonLines(List<PropertyDescriptor<?>> result) {
+
+    // Location to save JSONLines folder
+    result.add(
+        simpleIntegrationTemplate.folderProperty(FOLDER)
+            .label("Save to Folder")
+            .placeholder("Save the generated JSONLines file to this folder")
+            .isExpressionable(true)
+            .isRequired(true)
+            .build()
+    );
+
+    // Request body for user to insert Appian values to be converted to JSONLines file
+    LocalTypeDescriptor properties = simpleIntegrationTemplate.localType("JSONLINESFORMAT")
+        .properties(simpleIntegrationTemplate.textProperty("prompt")
+            .isExpressionable(true)
+            .displayHint(DisplayHint.EXPRESSION)
+            .refresh(RefreshPolicy.ALWAYS)
+            .placeholder("(Required) The prompt(s) to generate completions for, encoded as a string, array of strings, array of" +
+                " tokens, or array of token arrays.")
+            .build(),
+            simpleIntegrationTemplate.textProperty("completion")
+            .isExpressionable(true)
+            .displayHint(DisplayHint.EXPRESSION)
+            .placeholder("(Required) Expected result, given the preceding prompt.")
+            .refresh(RefreshPolicy.ALWAYS)
+            .build()
+        ).build();
+
+
+
+    LocalTypeDescriptor listOfProperties = simpleIntegrationTemplate.localType(REQ_BODY_PROPERTIES)
+        .properties(
+            simpleIntegrationTemplate.textProperty(OUTPUT_FILENAME)
+                .isExpressionable(true)
+                .label("OutputFileName")
+                .placeholder("Name of the output file to be saved (don't include any special characters or extension endings)")
+                .refresh(RefreshPolicy.ALWAYS)
+                .build(),
+            simpleIntegrationTemplate.localTypeProperty(properties)
+                .key(JSONLINES + "hidden")
+                .isHidden(true)
+                .refresh(RefreshPolicy.ALWAYS)
+                .build(),
+            simpleIntegrationTemplate.listTypeProperty("toJsonLines")
+                .refresh(RefreshPolicy.ALWAYS)
+                .itemType(TypeReference.from(properties))
+                .build()
+        ).build();
+
+
+    result.add(simpleIntegrationTemplate.localTypeProperty(listOfProperties)
+        .key(Util.removeSpecialCharactersFromPathName(pathName))
+        .displayHint(DisplayHint.EXPRESSION)
+        .isExpressionable(true)
+        .label("Request Body")
+        .description("Values will be converted to a JSONLines file and saved to Appian.")
+        .instructionText("Enter list of values in the form of {toJsonLines: {'prompt': '<prompt text>', 'completion': '<ideal " +
+            "generated text>'}, {'prompt': '<prompt text>', 'completion': '<ideal generated text>}'")
+        .refresh(RefreshPolicy.ALWAYS)
+        .build());
   }
 }

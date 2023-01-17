@@ -36,6 +36,10 @@ public interface ConstantKeys {
   String PATCH = "PATCH";
   String DELETE = "DELETE";
 
+  String JSONLINES = "JSONLINES";
+  String FOLDER = "folder";
+  String OUTPUT_FILENAME = "outputFileName";
+
   Set<String> PATHS_TO_REMOVE = new HashSet<>(Arrays.asList("/answers", "/classifications", "/engines", "/engines/{engine_id}",
    "/engines/{engine_id}/search"));
 

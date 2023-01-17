@@ -32,12 +32,6 @@ public class OpenAIIntegrationTemplate extends SimpleIntegrationTemplate impleme
       PropertyPath propertyPath,
       ExecutionContext executionContext) {
 
-    try {
-      HTTP.testAuth(connectedSystemConfiguration);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
     restBuilder.setIntegrationConfiguration(integrationConfiguration);
     return integrationConfiguration.setProperties(restBuilder.build());
   }
@@ -48,7 +42,7 @@ public class OpenAIIntegrationTemplate extends SimpleIntegrationTemplate impleme
       SimpleConfiguration connectedSystemConfiguration,
       ExecutionContext executionContext) {
 
-    Execute execute = new Execute(integrationConfiguration, connectedSystemConfiguration);
+    Execute execute = new Execute(integrationConfiguration, connectedSystemConfiguration, executionContext);
     try {
       execute.build();
     } catch (IOException e) {
