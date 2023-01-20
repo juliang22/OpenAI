@@ -4,7 +4,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +25,6 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okio.Buffer;
-import okio.BufferedSource;
 
 public class HTTP implements ConstantKeys {
 protected Execute executionService;
@@ -73,13 +70,14 @@ protected Execute executionService;
 
     try (Response response = client.newCall(request).execute()) {
       ResponseBody body = response.body();
-      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(body.string(), new TypeReference<HashMap<String,Object>>() {});
       int code = response.code();
       String message = response.message();
+      String bodyStr = body.string();
+      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(bodyStr, new TypeReference<HashMap<String,Object>>() {});
 
       // Set error if error is returned in response
       if (code > 400 || !response.isSuccessful()) {
-        executionService.setError("Error Code: " + code, message, response.body().string());
+        executionService.setError("Error Code: " + code, message, bodyStr);
       }
 
       // If OpenAI returns a document back, capture the document
@@ -124,7 +122,7 @@ protected Execute executionService;
         return new HttpResponse(code, message, responseEntity, document);
       }
       // If no document, just return the response
-      return new HttpResponse(response.code(), response.message(), responseEntity);
+      return new HttpResponse(code, message, responseEntity);
     }
   }
 

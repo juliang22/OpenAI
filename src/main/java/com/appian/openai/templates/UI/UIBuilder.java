@@ -318,6 +318,4 @@ public abstract class UIBuilder implements ConstantKeys {
         .choices(choices.size() > 0 ? choices.toArray(new Choice[0]) : defaultChoices.toArray(new Choice[0]))
         .build();
   }
-
-
 }

@@ -21,7 +21,7 @@ import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import std.Util;
 
-public class OpenAIUIBuilder extends UIBuilder{
+public class OpenAIUIBuilder extends UIBuilder {
 
   public OpenAIUIBuilder(SimpleIntegrationTemplate simpleIntegrationTemplate, String api) {
     super();
@@ -81,7 +81,6 @@ public class OpenAIUIBuilder extends UIBuilder{
     return result.toArray(new PropertyDescriptor<?>[0]);
   }
 
-
   public void buildRestCall(String restOperation, List<PropertyDescriptor<?>> result, String pathName) {
     setPathName(pathName);
     setPathVarsUI();
@@ -124,23 +123,13 @@ public class OpenAIUIBuilder extends UIBuilder{
 
     MediaType documentType = openAPI.getPaths().get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data");
     Schema<?> schema = (documentType == null) ?
-        paths.get(pathName)
-            .getPost()
-            .getRequestBody()
-            .getContent()
-            .get("application/json")
-            .getSchema() :
-        paths.get(pathName)
-            .getPost()
-            .getRequestBody()
-            .getContent()
-            .get("multipart/form-data")
-            .getSchema();
+        paths.get(pathName).getPost().getRequestBody().getContent().get("application/json").getSchema() :
+        paths.get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data").getSchema();
 
     Set<String> required = new HashSet<>(schema.getRequired());
     ReqBodyUIBuilder(result, schema.getProperties(), required);
 
-   /* if (integrationConfiguration.getValue(""))*/
+    /* if (integrationConfiguration.getValue(""))*/
   }
 
   public void buildPatch(List<PropertyDescriptor<?>> result) {
@@ -152,14 +141,12 @@ public class OpenAIUIBuilder extends UIBuilder{
   public void buildJsonLines(List<PropertyDescriptor<?>> result) {
 
     // Location to save JSONLines folder
-    result.add(
-        simpleIntegrationTemplate.folderProperty(FOLDER)
-            .label("Save to Folder")
-            .placeholder("Save the generated JSONLines file to this folder")
-            .isExpressionable(true)
-            .isRequired(true)
-            .build()
-    );
+    result.add(simpleIntegrationTemplate.folderProperty(FOLDER)
+        .label("Save to Folder")
+        .placeholder("Save the generated JSONLines file to this folder")
+        .isExpressionable(true)
+        .isRequired(true)
+        .build());
 
     // Request body for user to insert Appian values to be converted to JSONLines file
     LocalTypeDescriptor properties = simpleIntegrationTemplate.localType("JSONLINESFORMAT")
@@ -169,36 +156,29 @@ public class OpenAIUIBuilder extends UIBuilder{
             .refresh(RefreshPolicy.ALWAYS)
             .placeholder("(Required) The prompt(s) to generate completions for, encoded as a string, array of strings, array of" +
                 " tokens, or array of token arrays.")
-            .build(),
-            simpleIntegrationTemplate.textProperty("completion")
+            .build(), simpleIntegrationTemplate.textProperty("completion")
             .isExpressionable(true)
             .displayHint(DisplayHint.EXPRESSION)
             .placeholder("(Required) Expected result, given the preceding prompt.")
             .refresh(RefreshPolicy.ALWAYS)
-            .build()
-        ).build();
-
-
+            .build())
+        .build();
 
     LocalTypeDescriptor listOfProperties = simpleIntegrationTemplate.localType(REQ_BODY_PROPERTIES)
-        .properties(
-            simpleIntegrationTemplate.textProperty(OUTPUT_FILENAME)
-                .isExpressionable(true)
-                .label("OutputFileName")
-                .placeholder("Name of the output file to be saved (don't include any special characters or extension endings)")
-                .refresh(RefreshPolicy.ALWAYS)
-                .build(),
-            simpleIntegrationTemplate.localTypeProperty(properties)
-                .key(JSONLINES + "hidden")
-                .isHidden(true)
-                .refresh(RefreshPolicy.ALWAYS)
-                .build(),
-            simpleIntegrationTemplate.listTypeProperty("toJsonLines")
-                .refresh(RefreshPolicy.ALWAYS)
-                .itemType(TypeReference.from(properties))
-                .build()
-        ).build();
-
+        .properties(simpleIntegrationTemplate.textProperty(OUTPUT_FILENAME)
+            .isExpressionable(true)
+            .label("OutputFileName")
+            .placeholder("Name of the output file to be saved (don't include any special characters or extension endings)")
+            .refresh(RefreshPolicy.ALWAYS)
+            .build(), simpleIntegrationTemplate.localTypeProperty(properties)
+            .key(JSONLINES + "hidden")
+            .isHidden(true)
+            .refresh(RefreshPolicy.ALWAYS)
+            .build(), simpleIntegrationTemplate.listTypeProperty("toJsonLines")
+            .refresh(RefreshPolicy.ALWAYS)
+            .itemType(TypeReference.from(properties))
+            .build())
+        .build();
 
     result.add(simpleIntegrationTemplate.localTypeProperty(listOfProperties)
         .key(Util.removeSpecialCharactersFromPathName(pathName))
@@ -213,32 +193,33 @@ public class OpenAIUIBuilder extends UIBuilder{
   }
 
   public void buildFileCatcher(List<PropertyDescriptor<?>> result) {
-    result.add(
-        simpleIntegrationTemplate.booleanProperty(IS_FILE_EXPECTED)
-            .label("Will there be a file returned in the response?")
-            .displayMode(BooleanDisplayMode.RADIO_BUTTON)
-            .refresh(RefreshPolicy.ALWAYS)
-            .isExpressionable(true)
-            .build()
-    );
+    result.add(simpleIntegrationTemplate.booleanProperty(IS_FILE_EXPECTED)
+        .label("Will there be a file returned in the response?")
+        .displayMode(BooleanDisplayMode.RADIO_BUTTON)
+        .refresh(RefreshPolicy.ALWAYS)
+        .isExpressionable(true)
+        .build());
     PropertyDescriptor<?> isFileExpected = integrationConfiguration.getProperty(IS_FILE_EXPECTED);
-    if (isFileExpected != null && integrationConfiguration.getValue(IS_FILE_EXPECTED).equals(true)) {
-      result.add(
-          simpleIntegrationTemplate.folderProperty(FOLDER)
-              .isExpressionable(true)
-              .isRequired(true)
-              .label("Response File Save Location")
-              .instructionText("Choose the folder you would like to save the response file to.")
-              .build()
-      );
-      result.add(
-          simpleIntegrationTemplate.textProperty(SAVED_FILENAME)
-              .isExpressionable(true)
-              .isRequired(true)
-              .label("Response File Name")
-              .instructionText("Choose the name of the file received in the response.")
-              .build()
-      );
+    if (isFileExpected != null) {
+      if (integrationConfiguration.getValue(IS_FILE_EXPECTED).equals(true)) {
+        result.add(simpleIntegrationTemplate.folderProperty(FOLDER)
+            .isExpressionable(true)
+            .isRequired(true)
+            .label("Response File Save Location")
+            .instructionText("Choose the folder you would like to save the response file to.")
+            .build());
+        result.add(simpleIntegrationTemplate.textProperty(SAVED_FILENAME)
+            .isExpressionable(true)
+            .isRequired(true)
+            .label("Response File Name")
+            .instructionText("Choose the name of the file received in the response.")
+            .build());
+      } else {
+        // clearing folder and filename when no document is expected to be returned
+        integrationConfiguration.setValue(FOLDER, null);
+        integrationConfiguration.setValue(SAVED_FILENAME, null);
+      }
+
     }
   }
 
