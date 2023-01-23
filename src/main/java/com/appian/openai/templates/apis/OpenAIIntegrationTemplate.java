@@ -11,7 +11,7 @@ import com.appian.connectedsystems.templateframework.sdk.TemplateId;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyPath;
 import com.appian.connectedsystems.templateframework.sdk.metadata.IntegrationTemplateRequestPolicy;
 import com.appian.connectedsystems.templateframework.sdk.metadata.IntegrationTemplateType;
-import com.appian.openai.templates.Execution.Execute;
+import com.appian.openai.templates.Execution.OpenAIExecute;
 import com.appian.openai.templates.UI.OpenAIUIBuilder;
 
 import std.ConstantKeys;
@@ -39,9 +39,9 @@ public class OpenAIIntegrationTemplate extends SimpleIntegrationTemplate impleme
       SimpleConfiguration connectedSystemConfiguration,
       ExecutionContext executionContext) {
 
-    Execute execute = new Execute(integrationConfiguration, connectedSystemConfiguration, executionContext);
+    OpenAIExecute execute = new OpenAIExecute(integrationConfiguration, connectedSystemConfiguration, executionContext);
     try {
-      execute.build();
+      execute.buildExecution();
     } catch (IOException e) {
       return IntegrationResponse.forError(new IntegrationError.IntegrationErrorBuilder()
               .title(e.getCause().toString())

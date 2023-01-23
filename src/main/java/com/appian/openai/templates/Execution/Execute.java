@@ -1,11 +1,6 @@
 package com.appian.openai.templates.Execution;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,29 +9,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
-
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
 import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
 import com.appian.connectedsystems.templateframework.sdk.IntegrationError.IntegrationErrorBuilder;
-import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
-import com.appian.connectedsystems.templateframework.sdk.configuration.DocumentPropertyDescriptor;
+import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyState;
 import com.appian.connectedsystems.templateframework.sdk.diagnostics.IntegrationDesignerDiagnostic;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
-import okhttp3.MediaType;
-import okhttp3.RequestBody;
 import std.ConstantKeys;
 import std.HTTP;
 import std.HttpResponse;
 import std.Util;
 
-public class Execute implements ConstantKeys {
+public abstract class Execute implements ConstantKeys {
 
   protected String pathNameUnmodified;
   protected String pathNameModified;
@@ -54,7 +40,15 @@ public class Execute implements ConstantKeys {
   protected Map<String,Object> requestDiagnostic;
   protected HTTP httpService;
 
-  public Execute(SimpleConfiguration integrationConfiguration, SimpleConfiguration connectedSystemConfiguration,
+  public abstract void buildExecution() throws IOException;
+  public abstract void executeGet() throws IOException ;
+  public abstract void executePost() throws IOException ;
+  public abstract void executePatch() throws IOException ;
+  public abstract void executeDelete() throws IOException ;
+
+  public Execute(
+      SimpleConfiguration integrationConfiguration,
+      SimpleConfiguration connectedSystemConfiguration,
       ExecutionContext executionContext) {
     this.start = System.currentTimeMillis();
     this.connectedSystemConfiguration = connectedSystemConfiguration;
@@ -73,19 +67,24 @@ public class Execute implements ConstantKeys {
     buildPathNameWithPathVars();
   }
 
+  // Getting Appian execution details
   public SimpleConfiguration getConnectedSystemConfiguration() {
     return connectedSystemConfiguration;
   }
-
   public SimpleConfiguration getIntegrationConfiguration() {
     return integrationConfiguration;
   }
-
   public ExecutionContext getExecutionContext() {
     return executionContext;
   }
 
+  // Error setting/getting
   public IntegrationErrorBuilder getError() { return this.error; }
+  public void setError(String title, String message, String detail) {
+    error = new IntegrationErrorBuilder().title(title).message(message).detail(detail);
+  }
+
+  // Getting pathName with user inputted path parameters
   public void buildPathNameWithPathVars() {
     List<String> pathVars = Util.getPathVarsStr(pathNameModified);
     if (pathVars.size() == 0) return;
@@ -96,6 +95,9 @@ public class Execute implements ConstantKeys {
     });
   }
 
+  // getting/setting diagnostics
+  public Map<String,Object> getDiagnostics() {return this.requestDiagnostic;}
+
   public void setDiagnostics() {
     Map<String,Object> requestDiagnostic = new HashMap<>();
     requestDiagnostic.put("Endpoint: ", pathNameUnmodified);
@@ -103,11 +105,8 @@ public class Execute implements ConstantKeys {
     if (this.reqBodyKey != null) {
       requestDiagnostic.put("Request Body", this.builtRequestBody);
     }
-
     this.requestDiagnostic = requestDiagnostic;
   }
-
-  public Map<String,Object> getDiagnostics() {return this.requestDiagnostic;}
 
   public IntegrationDesignerDiagnostic getDiagnosticsUI() {
     setDiagnostics();
@@ -131,25 +130,7 @@ public class Execute implements ConstantKeys {
     return response;
   }
 
-  public void build() throws IOException {
-    switch (restOperation) {
-      case GET:
-      case DELETE:
-        executeGetOrDelete();
-        break;
-      case POST:
-      case PATCH:
-        executePostOrPatch();
-        break;
-
-      //  custom endpoint
-      case (JSONLINES):
-        executeJsonLines();
-        break;
-    }
-  }
-
-
+  // buildRequestBodyJSON() helper function to recursively extract user inputted values from Appian property descriptors
   public Map<String,Object> parseReqBodyJSON(String key, PropertyState val) {
 
     Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN"));
@@ -188,6 +169,7 @@ public class Execute implements ConstantKeys {
     return propertyMap;
   }
 
+  // Builds request body json from Appian property descriptors
   public void buildRequestBodyJSON(HashMap<String, PropertyState> reqBodyProperties) {
     // Converting PropertyState request body from ui into Map<String, Object> where objects could be more nested JSON
     reqBodyProperties.entrySet().forEach(prop -> {
@@ -209,101 +191,7 @@ public class Execute implements ConstantKeys {
         // Build the request body json
         builtRequestBody.put(key, flatValue);
       }
-
     });
   }
 
-  public void setError(String title, String message, String detail) {
-    error = new IntegrationErrorBuilder().title(title).message(message).detail(detail);
-  }
-
-  public void executeGetOrDelete() throws IOException {
-    this.HTTPResponse = httpService.get(pathNameModified);
-  }
-
-  public void executePostOrPatch() throws IOException {
-
-    HashMap<String, PropertyState> reqBodyProperties = integrationConfiguration.getValue(reqBodyKey);
-    if (reqBodyProperties == null || reqBodyProperties.size() <= 0) {
-      RequestBody body = RequestBody.create("", null);
-      HTTPResponse = httpService.post(pathNameModified, body);
-      return;
-    }
-
-    // Parse through user inputs and extract the values out of Appian property descriptors
-    buildRequestBodyJSON(reqBodyProperties);
-    if (getError() != null) return;
-
-    // Checking if there are documents to add to the request body
-    Set<DocumentPropertyDescriptor> documents = new HashSet<>();
-    integrationConfiguration.getProperties().forEach(property -> {
-      if (property instanceof DocumentPropertyDescriptor &&
-          integrationConfiguration.getProperty(property.getKey()) != null &&
-          integrationConfiguration.getValue(property.getKey()) != null) {
-        documents.add((DocumentPropertyDescriptor)property);
-      }
-    });
-
-    // If there are documents, send multipart post
-    if (documents.size() > 0) {
-      // adding file components to the multipart request body
-      Map<String,File> files = new HashMap<>();
-      documents.forEach(docProperty -> {
-        String docName = docProperty.getKey();
-        Document doc = integrationConfiguration.getValue(docName);
-        InputStream inputStream = doc.getInputStream();
-
-        try {
-          String fileNameWithoutExtension = doc.getFileName().substring(0, doc.getFileName().lastIndexOf("."));
-          File tempFile = File.createTempFile(fileNameWithoutExtension, "." + doc.getExtension());
-          tempFile.deleteOnExit();
-          files.put(docName, tempFile);
-          try (FileOutputStream out = new FileOutputStream(tempFile)) {
-            IOUtils.copy(inputStream, out);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      });
-
-      HTTPResponse = httpService.multipartPost(pathNameModified, builtRequestBody, files);
-    } else { // No image: Just sent request body as content-type/json
-      String jsonString = new ObjectMapper().writeValueAsString(builtRequestBody);
-      RequestBody body = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
-      HTTPResponse = httpService.post(pathNameModified, body);
-    }
-  }
-
-  public void executeJsonLines() {
-    // Build request body and throw error if there is an autogenerated property ("text") in a val
-    HashMap<String, PropertyState> reqBodyProperties = integrationConfiguration.getValue(reqBodyKey);
-    buildRequestBodyJSON(reqBodyProperties);
-    if (getError() != null) return;
-
-    JsonObject jsonObject = gson.toJsonTree(builtRequestBody).getAsJsonObject();
-    JsonArray jsonArray = jsonObject.getAsJsonArray("toJsonLines");
-    // TODO: fix setError
-    if (jsonArray == null) {
-        setError(
-            "Incorrect formatting.",
-            "'toJsonLines' key does not exist.",
-            "Refresh the page and click 'Generate Example Expression' to get correct format."
-        );
-        return;
-    }
-
-    StringBuilder jsonLines = new StringBuilder();
-    for (JsonElement element : jsonArray) {
-      jsonLines.append(element.toString()).append("\n");
-    }
-
-    ByteArrayInputStream inputStream = new ByteArrayInputStream(jsonLines.toString().getBytes(StandardCharsets.UTF_8));
-    String fileName = builtRequestBody.get(OUTPUT_FILENAME).toString();
-    Long folderID = integrationConfiguration.getValue(FOLDER);
-    Document document = executionContext.getDocumentDownloadService().downloadDocument(inputStream, folderID, fileName);
-    HTTPResponse = new HttpResponse(200, "JSON Lines file successfully created.", null);
-    HTTPResponse.setDocument(document);
-  }
 }

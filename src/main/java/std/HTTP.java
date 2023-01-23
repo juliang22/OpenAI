@@ -66,7 +66,7 @@ protected Execute executionService;
     }
   }
 
-  public  HttpResponse executeRequest(OkHttpClient client, Request request) throws IOException {
+  public HttpResponse executeRequest(OkHttpClient client, Request request) throws IOException {
 
     try (Response response = client.newCall(request).execute()) {
       ResponseBody body = response.body();
@@ -98,18 +98,10 @@ protected Execute executionService;
         PropertyDescriptor<?> hasSaveFolder = executionService.getIntegrationConfiguration().getProperty(FOLDER);
         PropertyDescriptor<?> hasSaveFileName = executionService.getIntegrationConfiguration().getProperty(SAVED_FILENAME);
         if (hasSaveFolder == null) {
-          executionService.setError(
-              "Could not save file received from api.",
-              "Set desired folder location to save the incoming file.",
-              ""
-          );
+          executionService.setError(FILE_SAVING_ERROR_TITLE, FOLDER_LOCATION_ERROR_MESSAGE, "");
           return new HttpResponse(code, message, responseEntity);
         } else if (hasSaveFileName == null) {
-          executionService.setError(
-              "Could not save file received from api.",
-              "Set desired file name save the incoming file.",
-              ""
-          );
+          executionService.setError(FILE_SAVING_ERROR_TITLE, FILE_NAME_ERROR_MESSAGE, "");
           return new HttpResponse(code, message, responseEntity);
         }
 
@@ -121,6 +113,7 @@ protected Execute executionService;
             .downloadDocument(inputStream, folderID, fileName);
         return new HttpResponse(code, message, responseEntity, document);
       }
+
       // If no document, just return the response
       return new HttpResponse(code, message, responseEntity);
     }
