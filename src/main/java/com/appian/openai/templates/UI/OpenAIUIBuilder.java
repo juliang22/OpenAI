@@ -212,7 +212,7 @@ public class OpenAIUIBuilder extends UIBuilder {
             .isExpressionable(true)
             .isRequired(true)
             .label("Response File Name")
-            .instructionText("Choose the name of the file received in the response.")
+            .instructionText("Choose the name of the file received in the response and the extension. ex. 'sampleFileName.pngqq'")
             .build());
       } else {
         // clearing folder and filename when no document is expected to be returned

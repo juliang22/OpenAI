@@ -86,7 +86,7 @@ protected Execute executionService;
           data instanceof List &&
           ((List<?>)data).size() > 0 &&
           ((List<?>)data).get(0) instanceof Map &&
-          ((Map)((List<?>)data).get(0)).containsKey("b64_json")) {
+          ((Map<?,?>)((List<?>)data).get(0)).containsKey("b64_json")) {
 
         //Get the b64_json and convert to input stream
         String bytesStr = (String)((Map)((List)responseEntity.get("data")).get(0)).get("b64_json");
