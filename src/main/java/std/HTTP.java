@@ -4,11 +4,13 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
 import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
@@ -88,11 +90,6 @@ protected Execute executionService;
           ((List<?>)data).get(0) instanceof Map &&
           ((Map<?,?>)((List<?>)data).get(0)).containsKey("b64_json")) {
 
-        //Get the b64_json and convert to input stream
-        String bytesStr = (String)((Map)((List)responseEntity.get("data")).get(0)).get("b64_json");
-        byte[] decodedBytes = Base64.getDecoder().decode(bytesStr);
-        InputStream inputStream = new ByteArrayInputStream(decodedBytes);
-
         // If there is an incoming file, save it in the desired location with the desired name
         // Set errors if no name or file location has been chosen
         PropertyDescriptor<?> hasSaveFolder = executionService.getIntegrationConfiguration().getProperty(FOLDER);
@@ -105,13 +102,33 @@ protected Execute executionService;
           return new HttpResponse(code, message, responseEntity);
         }
 
+        // Extracting files from the response body and saving them to Appian
         Long folderID = executionService.getIntegrationConfiguration().getValue(FOLDER);
         String fileName = executionService.getIntegrationConfiguration().getValue(SAVED_FILENAME);
-        Document document = executionService
-            .getExecutionContext()
-            .getDocumentDownloadService()
-            .downloadDocument(inputStream, folderID, fileName);
-        return new HttpResponse(code, message, responseEntity, document);
+        List<Document> documents = new ArrayList<>();
+        AtomicInteger index = new AtomicInteger(1);
+        ((List<?>)data).forEach(doc -> {
+          if (((Map)doc).get("b64_json") != null) {
+            // decoding doc
+            String bytesStr = ((String)((Map)doc).get("b64_json"));
+            byte[] decodedBytes = Base64.getDecoder().decode(bytesStr);
+            InputStream inputStream = new ByteArrayInputStream(decodedBytes);
+
+            // If there's more than one document to be saved, add a number to the end
+            String fileNameWithIndex = ((List<?>)data).size() > 1 ?
+                fileName.substring(0, fileName.lastIndexOf(".")) + index.getAndIncrement() + fileName.substring(fileName.lastIndexOf(".")) :
+                fileName;
+
+            // adding doc to map to be returned to Appian
+            Document document = executionService
+                .getExecutionContext()
+                .getDocumentDownloadService()
+                .downloadDocument(inputStream, folderID, fileNameWithIndex);
+            documents.add(document);
+          }
+        });
+
+        return new HttpResponse(code, message, responseEntity, documents);
       }
 
       // If no document, just return the response

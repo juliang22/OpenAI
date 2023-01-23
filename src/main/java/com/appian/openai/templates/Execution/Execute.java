@@ -8,11 +8,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
 import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
 import com.appian.connectedsystems.templateframework.sdk.IntegrationError.IntegrationErrorBuilder;
-import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyDescriptor;
+import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyState;
 import com.appian.connectedsystems.templateframework.sdk.diagnostics.IntegrationDesignerDiagnostic;
 import com.google.gson.Gson;
@@ -121,12 +122,21 @@ public abstract class Execute implements ConstantKeys {
     Map<String,Object> response = new HashMap<>();
 
     if (HTTPResponse != null) {
-      response.put("Response",HTTPResponse.getResponse());
+      response.put("Response", HTTPResponse.getResponse());
       response.put("Status Code: ", HTTPResponse.getStatusCode());
-      if (HTTPResponse.getDocument() != null) {
-        response.put("Document: ", HTTPResponse.getDocument());
+
+      // If files were returned from the http response, add them to Appian response in designer
+      List<Document> documents = HTTPResponse.getDocuments();
+      if (documents == null) return response;
+      if (documents.size() == 1) {
+        documents.forEach(doc -> response.put("Document: ", doc));
+      } else {
+        AtomicInteger index = new AtomicInteger(1);
+        documents.forEach(doc -> response.put("Document " + index.getAndIncrement() + ":", doc));
       }
     }
+
+
     return response;
   }
 

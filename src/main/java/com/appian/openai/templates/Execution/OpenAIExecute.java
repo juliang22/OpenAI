@@ -57,10 +57,10 @@ public class OpenAIExecute extends Execute{
   }
 
   @Override
-  public void executePatch() throws IOException {  }
+  public void executePatch() {  }
 
   @Override
-  public void executeDelete() throws IOException {  }
+  public void executeDelete() {  }
 
   @Override
   public void executeGet() throws IOException {
@@ -151,7 +151,7 @@ public class OpenAIExecute extends Execute{
     Long folderID = integrationConfiguration.getValue(FOLDER);
     Document document = executionContext.getDocumentDownloadService().downloadDocument(inputStream, folderID, fileName);
     HTTPResponse = new HttpResponse(200, "JSON Lines file successfully created.", null);
-    HTTPResponse.setDocument(document);
+    HTTPResponse.setDocuments(document);
   }
 
 
