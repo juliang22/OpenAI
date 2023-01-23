@@ -6,6 +6,8 @@ public class CustomEndpoint {
   String path;
   String summary;
 
+  // If the custom endpoints are needed that aren't documented in the OpenAPI spec, use this class to generate capture the
+  // necessary information to build the UI
   CustomEndpoint(String apiType, String restOperation, String path, String summary) {
     this.apiType = apiType;
     this.restOperation = restOperation;
