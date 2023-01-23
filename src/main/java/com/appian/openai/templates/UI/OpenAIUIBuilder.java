@@ -29,7 +29,7 @@ public class OpenAIUIBuilder extends UIBuilder {
     setSimpleIntegrationTemplate(simpleIntegrationTemplate);
 
     List<CustomEndpoint> customEndpoints = Collections.singletonList(new CustomEndpoint(OPENAI, JSONLINES, "/JSONLines",
-        "Creates a JSON " + "Lines file from Appian data (https://jsonlines.readthedocs.io/en/latest/)"));
+        "Creates a JSON Lines file from Appian data."));
     setDefaultEndpoints(customEndpoints);
   }
 
