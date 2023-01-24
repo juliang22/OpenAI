@@ -187,7 +187,7 @@ public class OpenAIUIBuilder extends UIBuilder {
         .label("Request Body")
         .description("Values will be converted to a JSONLines file and saved to Appian.")
         .instructionText("Enter list of values in the form of {toJsonLines: {'prompt': '<prompt text>', 'completion': '<ideal " +
-            "generated text>'}, {'prompt': '<prompt text>', 'completion': '<ideal generated text>}'")
+            "generated text>'}, {'prompt': '<prompt text>', 'completion': '<ideal generated text>'}}")
         .refresh(RefreshPolicy.ALWAYS)
         .build());
   }

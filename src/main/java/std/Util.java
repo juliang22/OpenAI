@@ -50,14 +50,4 @@ public class Util {
         }
     }
 
-    public static String filterRules(String str) {
-        return str == null ?
-            null :
-            str.replaceAll(" ", "%20").replaceAll(":","::");
-    }
-
-    public static String removeLastChar(String str) {
-        return str.substring(0, str.length() - 1);
-    }
-
 }
