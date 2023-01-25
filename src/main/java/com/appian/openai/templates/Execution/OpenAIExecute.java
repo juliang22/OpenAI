@@ -173,10 +173,14 @@ public class OpenAIExecute extends Execute{
       jsonLines.append(element.toString()).append("\n");
     }
 
+    Object fileName = builtRequestBody.get(OUTPUT_FILENAME);
+    if (fileName == null) {
+      setError("File name has not been set.", "Set file name before executing the request", "");
+      return;
+    }
     ByteArrayInputStream inputStream = new ByteArrayInputStream(jsonLines.toString().getBytes(StandardCharsets.UTF_8));
-    String fileName = builtRequestBody.get(OUTPUT_FILENAME).toString();
     Long folderID = integrationConfiguration.getValue(FOLDER);
-    Document document = executionContext.getDocumentDownloadService().downloadDocument(inputStream, folderID, fileName);
+    Document document = executionContext.getDocumentDownloadService().downloadDocument(inputStream, folderID, fileName.toString());
     HTTPResponse = new HttpResponse(
         200,
         "JSON Lines file successfully created.",
