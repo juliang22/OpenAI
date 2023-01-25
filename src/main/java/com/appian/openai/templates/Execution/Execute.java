@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
 import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
 import com.appian.connectedsystems.templateframework.sdk.IntegrationError.IntegrationErrorBuilder;
+import com.appian.connectedsystems.templateframework.sdk.IntegrationResponse;
 import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyState;
 import com.appian.connectedsystems.templateframework.sdk.diagnostics.IntegrationDesignerDiagnostic;
@@ -41,7 +42,7 @@ public abstract class Execute implements ConstantKeys {
   protected Map<String,Object> requestDiagnostic;
   protected HTTP httpService;
 
-  public abstract void buildExecution() throws IOException;
+  public abstract IntegrationResponse buildExecution() throws IOException;
   public abstract void executeGet() throws IOException ;
   public abstract void executePost() throws IOException ;
   public abstract void executePatch() throws IOException ;

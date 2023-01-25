@@ -5,7 +5,6 @@ import com.appian.connectedsystems.simplified.sdk.connectiontesting.SimpleTestab
 import com.appian.connectedsystems.templateframework.sdk.ExecutionContext;
 import com.appian.connectedsystems.templateframework.sdk.TemplateId;
 import com.appian.connectedsystems.templateframework.sdk.connectiontesting.TestConnectionResult;
-import com.appian.openai.templates.Execution.Execute;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import std.ConstantKeys;
@@ -48,7 +47,7 @@ public class OpenAICSP extends SimpleTestableConnectedSystemTemplate implements 
       if (response.getStatusCode() == 200) {
         return TestConnectionResult.success();
       }
-      return TestConnectionResult.error((String) response.getResponse().get("error"));
+      return TestConnectionResult.error(response.getResponse().get("error").toString());
     } catch (Exception e) {
       return TestConnectionResult.error(e.getMessage());
     }
