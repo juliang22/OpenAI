@@ -79,7 +79,7 @@ protected Execute executionService;
       HashMap<String,Object> responseEntity = new HashMap<>();
 
       // If the response is in JSONLines Format
-      if (executionService.getPathNameUnmodified().equals("/files/{file_id}/content")) {
+      if (executionService.getPathNameUnmodified().equals("/files/{file_id}/content") && code == 200) {
         String[] jsonObjects = bodyStr.split("\n");
         List<Map<String, Object>> responseList = new ArrayList<>();
         for (String jsonObject : jsonObjects) {
