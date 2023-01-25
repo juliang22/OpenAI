@@ -98,7 +98,7 @@ public abstract class UIBuilder implements ConstantKeys {
       if (itemSchema.getFormat() != null && itemSchema.getFormat().equals("binary")) {
         DocumentPropertyDescriptor document = simpleIntegrationTemplate.documentProperty(keyStr)
             .label("Document " + Character.toUpperCase(keyStr.charAt(0)) + keyStr.substring(1))
-            .isRequired(required.contains(keyStr) ? true : false)
+            .isRequired(required.contains(keyStr))
             .isExpressionable(true)
             .refresh(RefreshPolicy.ALWAYS)
             .instructionText(itemSchema.getDescription())
@@ -158,7 +158,7 @@ public abstract class UIBuilder implements ConstantKeys {
           description + "\n" + "'" + key + "'" + " can be one of the following " + "types: ");
       int propertyNum = 1;
       for (Schema<?> property : item.getOneOf()) {
-        oneOfStrBuilder.append("\n" + propertyNum++ + ". ").append(parseOneOf(property));
+        oneOfStrBuilder.append("\n").append(propertyNum++).append(". ").append(parseOneOf(property));
       }
       return builder.property(simpleIntegrationTemplate.textProperty(key)
           .placeholder(oneOfStrBuilder.toString())

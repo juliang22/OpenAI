@@ -61,9 +61,12 @@ protected Execute executionService;
     Request request = new Request.Builder().url(testURL).build();
     OkHttpClient client = getHTTPClient(connectedSystemConfiguration, "application/json");
     try (Response response = client.newCall(request).execute()) {
-      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(response.body().string(),
-          new TypeReference<HashMap<String,Object>>() {
-          });
+      ResponseBody body = response.body();
+      if (body == null) {
+        return new HttpResponse(204,
+            "Null value returned", new HashMap<String, Object>(){{put("Error","Response is empty");}});
+      }
+      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(body.string(), new TypeReference<HashMap<String,Object>>() {});
       return new HttpResponse(response.code(), response.message(), responseEntity);
     }
   }
@@ -71,7 +74,14 @@ protected Execute executionService;
   public HttpResponse executeRequest(OkHttpClient client, Request request) throws IOException {
 
     try (Response response = client.newCall(request).execute()) {
+      // Check if null value is returned
       ResponseBody body = response.body();
+      if (body == null) {
+        return new HttpResponse(204,
+            "Null value returned", new HashMap<String, Object>(){{put("Error","Response is empty");}});
+      }
+
+      // Set response properties
       int code = response.code();
       String message = response.message();
       String bodyStr = body.string();
@@ -83,8 +93,8 @@ protected Execute executionService;
         String[] jsonObjects = bodyStr.split("\n");
         List<Map<String, Object>> responseList = new ArrayList<>();
         for (String jsonObject : jsonObjects) {
-          HashMap<String, Object> inner = new HashMap();
-          inner.putAll(mapper.readValue(jsonObject, new TypeReference<HashMap<String,Object>>() {}));
+          HashMap<String,Object> inner = new HashMap<>(mapper.readValue(jsonObject, new TypeReference<HashMap<String,Object>>() {
+          }));
           responseList.add(inner);
         }
         responseEntity.put("Response", responseList);
@@ -100,8 +110,7 @@ protected Execute executionService;
 
       // If OpenAI returns a document back, capture the document
       Object data = responseEntity.get("data");
-      if (data != null &&
-          data instanceof List &&
+      if (data instanceof List &&
           ((List<?>)data).size() > 0 &&
           ((List<?>)data).get(0) instanceof Map &&
           ((Map<?,?>)((List<?>)data).get(0)).containsKey("b64_json")) {
@@ -124,9 +133,9 @@ protected Execute executionService;
         List<Document> documents = new ArrayList<>();
         AtomicInteger index = new AtomicInteger(1);
         ((List<?>)data).forEach(doc -> {
-          if (((Map)doc).get("b64_json") != null) {
+          if (((Map<?,?>)doc).get("b64_json") != null) {
             // decoding doc
-            String bytesStr = ((String)((Map)doc).get("b64_json"));
+            String bytesStr = ((String)((Map<?,?>)doc).get("b64_json"));
             byte[] decodedBytes = Base64.getDecoder().decode(bytesStr);
             InputStream inputStream = new ByteArrayInputStream(decodedBytes);
 
@@ -175,7 +184,7 @@ protected Execute executionService;
       if (val instanceof String) {
         multipartBuilder.addFormDataPart(key, ((String)val));
       } else {
-        String jsonString = null;
+        String jsonString;
         try {
           jsonString = new ObjectMapper().writeValueAsString(val);
         } catch (JsonProcessingException e) {
@@ -195,6 +204,12 @@ protected Execute executionService;
     // Getting the client/request and executing the request
     OkHttpClient client = getHTTPClient(executionService.getConnectedSystemConfiguration(), "multipart/form-data");
     Request request = new Request.Builder().url(url).post(multipartBuilder.build()).build();
+    return executeRequest(client, request);
+  }
+
+  public HttpResponse delete(String url) throws IOException {
+    Request request = new Request.Builder().url(url).delete().build();
+    OkHttpClient client = getHTTPClient(executionService.getConnectedSystemConfiguration(), "application/json");
     return executeRequest(client, request);
   }
 

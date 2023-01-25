@@ -7,9 +7,9 @@ import java.util.Map;
 import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
 
 public class HttpResponse {
-    private Map<String, Object> response;
-    private int statusCode;
-    private String statusLine;
+    private final Map<String, Object> response;
+    private final int statusCode;
+    private final String statusLine;
     private List<Document> documents;
 
     public HttpResponse(int statusCode, String statusLine, HashMap<String, Object> result) {
@@ -25,7 +25,7 @@ public class HttpResponse {
         this.documents = documents;
     }
 
-    public void setDocuments(Document document) {
+    public void addDocuments(Document document) {
         this.documents.add(document);
     }
 

@@ -6,7 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -45,15 +45,17 @@ public class OpenAIExecute extends Execute{
     try {
       switch (restOperation) {
         case GET:
-        case DELETE:
           executeGet();
+          break;
+        case DELETE:
+          executeDelete();
           break;
         case POST:
         case PATCH:
           executePost();
           break;
 
-        //  custom endpoint
+        // custom endpoint to build JSONLines file from Appian data
         case (JSONLINES):
           executeJsonLines();
           break;
@@ -83,7 +85,9 @@ public class OpenAIExecute extends Execute{
   public void executePatch() {  }
 
   @Override
-  public void executeDelete() {  }
+  public void executeDelete() throws IOException {
+    this.HTTPResponse = httpService.delete(pathNameModified);
+  }
 
   @Override
   public void executeGet() throws IOException {
@@ -177,6 +181,6 @@ public class OpenAIExecute extends Execute{
         200,
         "JSON Lines file successfully created.",
         new HashMap<String, Object>() {{ put("Response", "Document successfully created"); }},
-        Arrays.asList(document));
+        Collections.singletonList(document));
   }
 }
