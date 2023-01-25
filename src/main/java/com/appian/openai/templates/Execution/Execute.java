@@ -86,6 +86,8 @@ public abstract class Execute implements ConstantKeys {
     error = new IntegrationErrorBuilder().title(title).message(message).detail(detail);
   }
 
+  public Gson getGson() { return gson;}
+
   // Getting pathName with user inputted path parameters
   public void buildPathNameWithPathVars() {
     List<String> pathVars = Util.getPathVarsStr(pathNameModified);
@@ -123,17 +125,17 @@ public abstract class Execute implements ConstantKeys {
     Map<String,Object> response = new HashMap<>();
 
     if (HTTPResponse != null) {
-      response.put("Response", HTTPResponse.getResponse());
-      response.put("Status Code: ", HTTPResponse.getStatusCode());
+      response.putAll(HTTPResponse.getResponse());
+      response.put("Status Code", HTTPResponse.getStatusCode());
 
       // If files were returned from the http response, add them to Appian response in designer
       List<Document> documents = HTTPResponse.getDocuments();
       if (documents == null) return response;
       if (documents.size() == 1) {
-        documents.forEach(doc -> response.put("Document: ", doc));
+        documents.forEach(doc -> response.put("Document", doc));
       } else {
         AtomicInteger index = new AtomicInteger(1);
-        documents.forEach(doc -> response.put("Document " + index.getAndIncrement() + ":", doc));
+        documents.forEach(doc -> response.put("Document" + index.getAndIncrement(), doc));
       }
     }
     return response;

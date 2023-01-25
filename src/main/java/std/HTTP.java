@@ -75,7 +75,25 @@ protected Execute executionService;
       int code = response.code();
       String message = response.message();
       String bodyStr = body.string();
-      HashMap<String,Object> responseEntity = new ObjectMapper().readValue(bodyStr, new TypeReference<HashMap<String,Object>>() {});
+      ObjectMapper mapper = new ObjectMapper();
+      HashMap<String,Object> responseEntity = new HashMap<>();
+
+      // If the response is in JSONLines Format
+      String[] jsonObjects = bodyStr.split("\n");
+      if (jsonObjects != null && jsonObjects.length > 0) {
+        List<Map<String, Object>> responseList = new ArrayList<>();
+        for (String jsonObject : jsonObjects) {
+          HashMap<String, Object> inner = new HashMap();
+          inner.putAll(mapper.readValue(jsonObject, new TypeReference<HashMap<String,Object>>() {}));
+          responseList.add(inner);
+        }
+        responseEntity.put("Response", responseList);
+      } else {
+        // Normal json response sent back
+        responseEntity.putAll(mapper.readValue(bodyStr, new TypeReference<HashMap<String,Object>>() {}));
+      }
+
+
 
       // Set error if error is returned in response
       if (code > 400 || !response.isSuccessful()) {
