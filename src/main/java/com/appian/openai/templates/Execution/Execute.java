@@ -86,7 +86,7 @@ public abstract class Execute implements ConstantKeys {
     error = new IntegrationErrorBuilder().title(title).message(message).detail(detail);
   }
 
-  public Gson getGson() { return gson;}
+public String getPathNameUnmodified() {return pathNameUnmodified;}
 
   // Getting pathName with user inputted path parameters
   public void buildPathNameWithPathVars() {

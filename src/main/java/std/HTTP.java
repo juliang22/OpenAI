@@ -79,8 +79,8 @@ protected Execute executionService;
       HashMap<String,Object> responseEntity = new HashMap<>();
 
       // If the response is in JSONLines Format
-      String[] jsonObjects = bodyStr.split("\n");
-      if (jsonObjects != null && jsonObjects.length > 0) {
+      if (executionService.getPathNameUnmodified().equals("/files/{file_id}/content")) {
+        String[] jsonObjects = bodyStr.split("\n");
         List<Map<String, Object>> responseList = new ArrayList<>();
         for (String jsonObject : jsonObjects) {
           HashMap<String, Object> inner = new HashMap();
@@ -92,8 +92,6 @@ protected Execute executionService;
         // Normal json response sent back
         responseEntity.putAll(mapper.readValue(bodyStr, new TypeReference<HashMap<String,Object>>() {}));
       }
-
-
 
       // Set error if error is returned in response
       if (code > 400 || !response.isSuccessful()) {
