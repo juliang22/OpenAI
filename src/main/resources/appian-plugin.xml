@@ -13,7 +13,7 @@
       <integration-template key="OpenAIIntegrationTemplate"
                             name="Openai"
                             class="com.appian.openai.templates.apis.OpenAIIntegrationTemplate"
-                            request-policy="write" />
+                            request-policy="read_and_write" />
     </version>
   </connected-system>
 </appian-plugin>
