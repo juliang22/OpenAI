@@ -144,7 +144,7 @@ public String getPathNameUnmodified() {return pathNameUnmodified;}
   // buildRequestBodyJSON() helper function to recursively extract user inputted values from Appian property descriptors
   public Map<String,Object> parseReqBodyJSON(String key, PropertyState val) {
 
-    Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN"));
+    Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN", "DOUBLE"));
     Map<String, Object> propertyMap = new HashMap<>();
 
     // Base case: if the value does not have nested values, insert the value into the map

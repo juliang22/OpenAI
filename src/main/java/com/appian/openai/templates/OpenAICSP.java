@@ -32,6 +32,7 @@ public class OpenAICSP extends SimpleTestableConnectedSystemTemplate implements 
                 "account.")
             .masked(true)
             .isRequired(true)
+            .isImportCustomizable(true)
             .build(),
         textProperty(ORGANIZATION)
             .label("Organization")
