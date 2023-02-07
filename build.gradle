@@ -34,6 +34,10 @@ jar {
     from(configurations.runtimeClasspath)
   }
 
+  into('src') {
+    from (sourceSets.main.allJava)
+  }
+
   manifest {
     attributes("Spring-Context": "*;publish-context:=false")
   }
