@@ -3,8 +3,10 @@ package com.appian.openai.templates.UI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
@@ -125,11 +127,14 @@ public class OpenAIUIBuilder extends UIBuilder {
     Schema<?> schema = (documentType == null) ?
         paths.get(pathName).getPost().getRequestBody().getContent().get("application/json").getSchema() :
         paths.get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data").getSchema();
-
     Set<String> required = new HashSet<>(schema.getRequired());
-    ReqBodyUIBuilder(result, schema.getProperties(), required);
 
-    /* if (integrationConfiguration.getValue(""))*/
+    // Control fields you want to remove from specific paths
+    Map<String, List<String>> removeFieldsFromReqBody = new HashMap<>();
+    removeFieldsFromReqBody.put("/completions", Arrays.asList("stream"));
+
+    // Build req body
+    ReqBodyUIBuilder(result, schema.getProperties(), required, removeFieldsFromReqBody);
   }
 
   public void buildPatch(List<PropertyDescriptor<?>> result) {

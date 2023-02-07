@@ -87,7 +87,10 @@ public abstract class UIBuilder implements ConstantKeys {
     return pathVarsUI;
   }
 
-  public void ReqBodyUIBuilder(List<PropertyDescriptor<?>> result, Map<?,?> properties, Set<String> required) {
+  public void ReqBodyUIBuilder(List<PropertyDescriptor<?>> result,
+      Map<?,?> properties,
+      Set<String> required,
+      Map<String, List<String>> removeFieldsFromReqBody) {
     LocalTypeDescriptor.Builder builder = simpleIntegrationTemplate.localType(REQ_BODY_PROPERTIES);
     properties.forEach((key, item) -> {
       Schema<?> itemSchema = (Schema<?>)item;
@@ -105,7 +108,7 @@ public abstract class UIBuilder implements ConstantKeys {
             .build();
         result.add(document);
       } else {
-        LocalTypeDescriptor property = parseRequestBody(keyStr, itemSchema, required);
+        LocalTypeDescriptor property = parseRequestBody(keyStr, itemSchema, required, removeFieldsFromReqBody);
         if (property != null) {
           builder.properties(property.getProperties());
         }
@@ -148,7 +151,14 @@ public abstract class UIBuilder implements ConstantKeys {
     return propertyType;
   }
 
-  public LocalTypeDescriptor parseRequestBody(String key, Schema<?> item, Set<?> requiredProperties) {
+  public LocalTypeDescriptor parseRequestBody(String key,
+      Schema<?> item,
+      Set<?> requiredProperties,
+      Map<String, List<String>> removeFieldsFromReqBody) {
+    // Control fields that you don't want to show on specific paths
+    if (removeFieldsFromReqBody.keySet().contains(pathName) && removeFieldsFromReqBody.get(pathName).contains(key)) {
+      return null;
+    }
 
     LocalTypeDescriptor.Builder builder = simpleIntegrationTemplate.localType(key);
 
@@ -174,7 +184,7 @@ public abstract class UIBuilder implements ConstantKeys {
         Schema<?> innerItemSchema = (Schema<?>)innerItem;
         Set<?> innerRequiredProperties =
             innerItemSchema.getRequired() != null ? new HashSet<>(innerItemSchema.getRequired()) : requiredProperties;
-        LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties);
+        LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties, removeFieldsFromReqBody);
         if (nested != null) {
           builder.properties(nested.getProperties());
         }
@@ -193,7 +203,7 @@ public abstract class UIBuilder implements ConstantKeys {
         Schema<?> innerItemSchema = (Schema<?>)innerItem;
         Set<?> innerRequiredProperties =
             innerItemSchema.getRequired() != null ? new HashSet<>(innerItemSchema.getRequired()) : requiredProperties;
-        LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties);
+        LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties, removeFieldsFromReqBody);
         if (nested != null) {
           builder.properties(nested.getProperties());
         }
