@@ -329,7 +329,7 @@ public abstract class UIBuilder implements ConstantKeys {
     return simpleIntegrationTemplate.textProperty(CHOSEN_ENDPOINT)
         .isRequired(true)
         .refresh(RefreshPolicy.ALWAYS)
-        .label("Select Endpoint")
+        .label("Select Operation")
         .transientChoices(true)
         .instructionText(instructionText)
         .choices(choices.size() > 0 ? choices.toArray(new Choice[0]) : defaultChoices.toArray(new Choice[0]))
