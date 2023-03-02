@@ -50,9 +50,9 @@ public class OpenAIUIBuilder extends UIBuilder {
     // If no endpoint is selected, just build the api dropdown
     String selectedEndpoint = integrationConfiguration.getValue(CHOSEN_ENDPOINT);
     TextPropertyDescriptor searchBar = simpleIntegrationTemplate.textProperty(SEARCH)
-        .label("Sort Operations Dropdown")
+        .label("Sort Endpoints Dropdown")
         .refresh(RefreshPolicy.ALWAYS)
-        .instructionText("Sort the operations dropdown below with a relevant search query.")
+        .instructionText("Sort the endpoints dropdown below with a relevant search query.")
         .placeholder("chat")
         .build();
     List<PropertyDescriptor<?>> result = new ArrayList<>(Arrays.asList(searchBar, endpointChoiceBuilder()));
