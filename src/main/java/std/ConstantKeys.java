@@ -20,6 +20,7 @@ public interface ConstantKeys {
   // Deprecated endpoints
   Set<String> PATHS_TO_REMOVE = new HashSet<>(Arrays.asList("/answers", "/classifications", "/engines", "/engines/{engine_id}",
       "/engines/{engine_id}/search"));
+/*  "/audio/transcriptions", "/audio/translations"*/
 
 
   //Rest call types

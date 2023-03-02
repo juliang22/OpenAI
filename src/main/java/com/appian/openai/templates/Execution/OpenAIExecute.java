@@ -37,7 +37,6 @@ public class OpenAIExecute extends Execute{
       SimpleConfiguration connectedSystemConfiguration,
       ExecutionContext executionContext)  {
     super(integrationConfiguration, connectedSystemConfiguration, executionContext);
-
   }
 
   @Override

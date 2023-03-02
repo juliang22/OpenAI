@@ -3,8 +3,10 @@ package com.appian.openai.templates.UI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
@@ -48,10 +50,10 @@ public class OpenAIUIBuilder extends UIBuilder {
     // If no endpoint is selected, just build the api dropdown
     String selectedEndpoint = integrationConfiguration.getValue(CHOSEN_ENDPOINT);
     TextPropertyDescriptor searchBar = simpleIntegrationTemplate.textProperty(SEARCH)
-        .label("Sort Endpoints Dropdown")
+        .label("Sort Operations Dropdown")
         .refresh(RefreshPolicy.ALWAYS)
-        .instructionText("Sort the endpoints dropdown below with a relevant search query.")
-        .placeholder("fine-tune model")
+        .instructionText("Sort the operations dropdown below with a relevant search query.")
+        .placeholder("chat")
         .build();
     List<PropertyDescriptor<?>> result = new ArrayList<>(Arrays.asList(searchBar, endpointChoiceBuilder()));
     if (selectedEndpoint == null) {
@@ -124,12 +126,16 @@ public class OpenAIUIBuilder extends UIBuilder {
     MediaType documentType = openAPI.getPaths().get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data");
     Schema<?> schema = (documentType == null) ?
         paths.get(pathName).getPost().getRequestBody().getContent().get("application/json").getSchema() :
-        paths.get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data").getSchema();
-
+        documentType.getSchema();
     Set<String> required = new HashSet<>(schema.getRequired());
-    ReqBodyUIBuilder(result, schema.getProperties(), required);
 
-    /* if (integrationConfiguration.getValue(""))*/
+    // Control fields you want to remove from specific paths
+    Map<String, List<String>> removeFieldsFromReqBody = new HashMap<>();
+    removeFieldsFromReqBody.put("/completions", Arrays.asList("stream"));
+    removeFieldsFromReqBody.put("/chat/completions", Arrays.asList("stream"));
+
+    // Build req body
+    ReqBodyUIBuilder(result, schema.getProperties(), required, removeFieldsFromReqBody);
   }
 
   public void buildPatch(List<PropertyDescriptor<?>> result) {
