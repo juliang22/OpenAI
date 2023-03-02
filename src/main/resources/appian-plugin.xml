@@ -2,11 +2,11 @@
   <plugin-info>
     <description>OpenAI Connected System Plugin</description>
     <vendor name="Appian" url="https://appian.com/"/>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <application-version min="7.6.0.4"/>
   </plugin-info>
   <connected-system key="OpenAI">
-    <version major-version="1">
+    <version major-version="1.1.0">
       <connected-system-template key="OpenAICSP"
                                  name="OpenAI"
                                  class="com.appian.openai.templates.OpenAICSP"/>

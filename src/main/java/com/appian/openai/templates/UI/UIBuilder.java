@@ -281,6 +281,9 @@ public abstract class UIBuilder implements ConstantKeys {
 
       operations.forEach((restOperation, openAPIOperation) -> {
         if (openAPIOperation != null) {
+          // filter out deprecated endpoints
+          if (openAPIOperation.getDeprecated() != null && openAPIOperation.getDeprecated()) return;
+
           String name = restOperation + " - " + openAPIOperation.getSummary();
           String value = api + ":" + restOperation + ":" + pathName + ":" + openAPIOperation.getSummary();
 

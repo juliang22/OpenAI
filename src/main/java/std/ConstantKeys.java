@@ -18,9 +18,10 @@ public interface ConstantKeys {
   String OPENAI = "openai";
 
   // Deprecated endpoints
-  Set<String> PATHS_TO_REMOVE = new HashSet<>(Arrays.asList("/answers", "/classifications", "/engines", "/engines/{engine_id}",
-      "/engines/{engine_id}/search"));
+  Set<String> PATHS_TO_REMOVE = new HashSet<>(Arrays.asList());
 /*  "/audio/transcriptions", "/audio/translations"*/
+/*  "/answers", "/classifications", "/engines", "/engines/{engine_id}",
+      "/engines/{engine_id}/search"*/
 
 
   //Rest call types
