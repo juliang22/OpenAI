@@ -53,7 +53,7 @@ public class OpenAIUIBuilder extends UIBuilder {
         .label("Sort Endpoints Dropdown")
         .refresh(RefreshPolicy.ALWAYS)
         .instructionText("Sort the endpoints dropdown below with a relevant search query.")
-        .placeholder("fine-tune model")
+        .placeholder("chat")
         .build();
     List<PropertyDescriptor<?>> result = new ArrayList<>(Arrays.asList(searchBar, endpointChoiceBuilder()));
     if (selectedEndpoint == null) {
@@ -126,12 +126,13 @@ public class OpenAIUIBuilder extends UIBuilder {
     MediaType documentType = openAPI.getPaths().get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data");
     Schema<?> schema = (documentType == null) ?
         paths.get(pathName).getPost().getRequestBody().getContent().get("application/json").getSchema() :
-        paths.get(pathName).getPost().getRequestBody().getContent().get("multipart/form-data").getSchema();
+        documentType.getSchema();
     Set<String> required = new HashSet<>(schema.getRequired());
 
     // Control fields you want to remove from specific paths
     Map<String, List<String>> removeFieldsFromReqBody = new HashMap<>();
     removeFieldsFromReqBody.put("/completions", Arrays.asList("stream"));
+    removeFieldsFromReqBody.put("/chat/completions", Arrays.asList("stream"));
 
     // Build req body
     ReqBodyUIBuilder(result, schema.getProperties(), required, removeFieldsFromReqBody);
