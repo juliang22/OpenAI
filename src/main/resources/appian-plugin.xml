@@ -14,6 +14,8 @@
                             name="Openai"
                             class="com.appian.openai.templates.apis.OpenAIIntegrationTemplate"
                             request-policy="read_and_write" />
+      <client-api key="chatCompletion" name="ChatGPTChatBot"
+                  class="com.appian.openai.templates.apis.ChatBotClientApi" />
     </version>
   </connected-system>
 </appian-plugin>
