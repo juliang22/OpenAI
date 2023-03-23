@@ -45,7 +45,7 @@ public class ChatBotClientApi extends SimpleClientApi implements ConstantKeys {
       ResponseBody body = response.body();
       HashMap<String, Object> responseObj = new ObjectMapper().readValue(body.string(), new TypeReference<HashMap<String,Object>>() {});
       if (responseObj.get("error") != null) {
-        responseEntity.put("error", ((Map<?, ?>)responseObj.get("error")).get("message"));
+        responseEntity = responseObj;
       } else {
         ArrayList<String> payload = new ArrayList<>();
         ((List<?>)responseObj.get("choices")).forEach(choice -> {
