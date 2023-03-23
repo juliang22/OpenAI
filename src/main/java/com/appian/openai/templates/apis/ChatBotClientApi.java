@@ -3,9 +3,11 @@ package com.appian.openai.templates.apis;
 import static std.HTTP.getHTTPClient;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleClientApi;
 import com.appian.connectedsystems.simplified.sdk.SimpleClientApiRequest;
@@ -32,12 +34,27 @@ public class ChatBotClientApi extends SimpleClientApi implements ConstantKeys {
 
     String requestBodyStr = new Gson().toJson(simpleRequest.getPayload());
     RequestBody requestBody = RequestBody.create(requestBodyStr, MediaType.get("application/json; charset=utf-8"));
-    Request request = new Request.Builder().url("https://api.openai.com/v1/chat/completions").post(requestBody).build();
+    Request request = new Request.Builder()
+        .url("https://api.openai.com/v1/chat/completions")
+        .addHeader("Accept", "application/json; charset=utf-8")
+        .post(requestBody)
+        .build();
     OkHttpClient client = getHTTPClient(simpleRequest.getConnectedSystemConfiguration(), "application/json");
-    HashMap<String, Object> responseEntity;
+    HashMap<String, Object> responseEntity = new HashMap<String, Object>();
     try (Response response = client.newCall(request).execute()) {
       ResponseBody body = response.body();
-      responseEntity = new ObjectMapper().readValue(body.string(), new TypeReference<HashMap<String,Object>>() {});
+      HashMap<String, Object> responseObj = new ObjectMapper().readValue(body.string(), new TypeReference<HashMap<String,Object>>() {});
+      if (responseObj.get("error") != null) {
+        responseEntity.put("error", ((Map<?, ?>)responseObj.get("error")).get("message"));
+      } else {
+        ArrayList<String> payload = new ArrayList<>();
+        ((List<?>)responseObj.get("choices")).forEach(choice -> {
+          String msg = (String)((Map<?,?>)((Map<?,?>)choice).get("message")).get("content");
+          String base64String = Base64.getEncoder().encodeToString(msg.getBytes());
+          payload.add(base64String);
+        });
+        responseEntity.put("messages", payload);
+      }
     } catch (IOException e) {
       responseEntity = new HashMap<String, Object>() {{ put("error", e); }};
     }
