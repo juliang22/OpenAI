@@ -18,7 +18,7 @@ public class OpenAICSP extends SimpleTestableConnectedSystemTemplate implements 
 
   public static final ClassLoader classLoader = OpenAICSP.class.getClassLoader();
 
-  public static final OpenAPI openaiOpenApi = Util.getOpenApi("com/appian/openai/templates/openai" +
+  public static final OpenAPI openaiOpenApi = Util.getOpenApi("com/appian/openai/templates/openai3" +
       ".yaml", classLoader);
 
   @Override

@@ -17,6 +17,8 @@ import com.appian.connectedsystems.templateframework.sdk.IntegrationResponse;
 import com.appian.connectedsystems.templateframework.sdk.configuration.Document;
 import com.appian.connectedsystems.templateframework.sdk.configuration.PropertyState;
 import com.appian.connectedsystems.templateframework.sdk.diagnostics.IntegrationDesignerDiagnostic;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 
 import std.ConstantKeys;
@@ -144,7 +146,7 @@ public String getPathNameUnmodified() {return pathNameUnmodified;}
   // buildRequestBodyJSON() helper function to recursively extract user inputted values from Appian property descriptors
   public Map<String,Object> parseReqBodyJSON(String key, PropertyState val) {
 
-    Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN", "DOUBLE"));
+    Set<String> notNested = new HashSet<>(Arrays.asList("STRING", "INTEGER", "BOOLEAN", "DOUBLE", "PARAGRAPH"));
     Map<String, Object> propertyMap = new HashMap<>();
 
     // Base case: if the value does not have nested values, insert the value into the map
@@ -162,7 +164,20 @@ public String getPathNameUnmodified() {return pathNameUnmodified;}
         List<Map<String, Object>> propertyArr = new ArrayList<>();
         ((ArrayList<?>)val.getValue()).forEach(property -> {
           Map<String,Object> nestedVal = parseReqBodyJSON(property.toString(), ((PropertyState)property));
-          propertyArr.add((Map<String,Object>)nestedVal.get(property.toString()));
+          String propertyName = property.toString();
+
+          // If a!toJson was used to set parameters in chat/completions function calling
+          if (((Map)nestedVal.get(propertyName)).containsKey("parameters")) {
+            Map<String, Object> functions = (Map<String,Object>)nestedVal.get(propertyName);
+            try {
+              functions.put("parameters", new ObjectMapper().readValue(functions.get("parameters").toString(), Map.class));
+            } catch (JsonProcessingException e) {
+              setError("JSON formatting error", "Problem reading a!toJson().", "Make sure request body formatting is correct");
+              return;
+            }
+          }
+
+          propertyArr.add((Map<String,Object>)nestedVal.get(propertyName));
         });
         propertyMap.put(key, propertyArr);
       } else {

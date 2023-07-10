@@ -171,30 +171,48 @@ public abstract class UIBuilder implements ConstantKeys {
           .label(key)
           .placeholder(oneOfStrBuilder.toString())
           .isExpressionable(true)
-          .refresh(RefreshPolicy.ALWAYS)
+          .build()).build();
+    } else if (item.getAnyOf() != null) {
+      String description = item.getDescription() != null ? item.getDescription().replaceAll("\\n", "") : "";
+      StringBuilder anyOfStrBuilder = new StringBuilder(
+          description + "\n" + "'" + key + "'" + " can be one of the following " + "types: ");
+      for (Schema<?> property : item.getAnyOf()) {
+        if (property.getEnum() != null) {
+          anyOfStrBuilder.append(property.getEnum());
+        }
+      }
+      return builder.property(simpleIntegrationTemplate.textProperty(key)
+          .label(key)
+          .placeholder(anyOfStrBuilder.toString())
+          .isExpressionable(true)
           .build()).build();
     } else if (item.getType().equals("object")) {
+      if (item.getProperties() != null) {
+        item.getProperties().forEach((innerKey, innerItem) -> {
+          Schema<?> innerItemSchema = (Schema<?>)innerItem;
+          Set<?> innerRequiredProperties =
+              innerItemSchema.getRequired() != null ? new HashSet<>(innerItemSchema.getRequired()) : requiredProperties;
+          LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties,
+              removeFieldsFromReqBody);
+          if (nested != null) {
+            builder.properties(nested.getProperties());
+          }
+        });
+        return simpleIntegrationTemplate.localType(key + "Builder")
+            .properties(simpleIntegrationTemplate.localTypeProperty(builder.build())
+                .refresh(RefreshPolicy.ALWAYS)
+                .label(key)
+                .build())
+            .build();
+      }
 
-      if (item.getProperties() == null)
-        return null;
-
-      item.getProperties().forEach((innerKey, innerItem) -> {
-        Schema<?> innerItemSchema = (Schema<?>)innerItem;
-        Set<?> innerRequiredProperties =
-            innerItemSchema.getRequired() != null ? new HashSet<>(innerItemSchema.getRequired()) : requiredProperties;
-        LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties,
-            removeFieldsFromReqBody);
-        if (nested != null) {
-          builder.properties(nested.getProperties());
-        }
-      });
-
-      return simpleIntegrationTemplate.localType(key + "Builder")
-          .properties(simpleIntegrationTemplate.localTypeProperty(builder.build())
-              .refresh(RefreshPolicy.ALWAYS)
-              .label(key)
-              .build())
-          .build();
+      // OpenAI's function calling does not have a specific key/value format and thus must be SAIL maps wrapped in a!toJson
+      if (key.equals("parameters")) {
+        item.setType("string");
+        item.setDescription("The value for 'parameters' is dynamic and must be wrapped in a!toJson. Example parameters value: " +
+            "a!toJson( { type: \"object\", properties: { location: { type: \"string\", description: \"The city and state, e.g. San Francisco, " +
+            "CA\" }, unit: { type: \"string\", enum: { \"celsius\", \"fahrenheit\" } } }, required: { \"location\" } }). " + item.getDescription());
+      }
 
     } else if (item.getType().equals("array")) {
 
@@ -228,39 +246,38 @@ public abstract class UIBuilder implements ConstantKeys {
               .build())
           .build();
 
-    } else {
-      // Base case: Create new property field depending on the type
-      PropertyDescriptorBuilder<?> newProperty;
-      switch (item.getType()) {
-        case ("boolean"):
-          newProperty = simpleIntegrationTemplate.booleanProperty(key);
-          break;
-        case ("integer"):
-          newProperty = simpleIntegrationTemplate.integerProperty(key);
-          break;
-        case ("number"):
-          newProperty = simpleIntegrationTemplate.doubleProperty(key);
-          break;
-        default:
-          newProperty = simpleIntegrationTemplate.textProperty(key);
-          break;
-      }
-
-      String isRequired = requiredProperties != null && requiredProperties.contains(key) ? "(Required) ": "";
-      String description = item.getDescription() != null ?
-          isRequired + item.getDescription().replaceAll("\n", "") :
-          "";
-      return simpleIntegrationTemplate.localType(key + "Container")
-          .property(newProperty.isExpressionable(true)
-              .label(key)
-              .isRequired(requiredProperties != null && requiredProperties.contains(key))
-              .isExpressionable(true)
-              .refresh(RefreshPolicy.ALWAYS)
-              .placeholder(description)
-              .description(description)
-              .build())
-          .build();
     }
+    // Base case: Create new property field depending on the type
+    PropertyDescriptorBuilder<?> newProperty;
+    switch (item.getType()) {
+      case ("boolean"):
+        newProperty = simpleIntegrationTemplate.booleanProperty(key);
+        break;
+      case ("integer"):
+        newProperty = simpleIntegrationTemplate.integerProperty(key);
+        break;
+      case ("number"):
+        newProperty = simpleIntegrationTemplate.doubleProperty(key);
+        break;
+      default:
+        newProperty = simpleIntegrationTemplate.textProperty(key);
+        break;
+    }
+
+    String isRequired = requiredProperties != null && requiredProperties.contains(key) ? "(Required) ": "";
+    String description = item.getDescription() != null ?
+        isRequired + item.getDescription().replaceAll("\n", "") :
+        "";
+    return simpleIntegrationTemplate.localType(key + "Container")
+        .property(newProperty.isExpressionable(true)
+            .label(key)
+            .isRequired(requiredProperties != null && requiredProperties.contains(key))
+            .isExpressionable(true)
+            .refresh(RefreshPolicy.ALWAYS)
+            .placeholder(description)
+            .description(description)
+            .build())
+        .build();
   }
 
   // Runs on initialization to set the default paths for the dropdown as well as a list of strings of choices used for
