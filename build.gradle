@@ -11,11 +11,10 @@ dependencies {
   compileOnly 'org.slf4j:slf4j-api:1.7.22'
 
   implementation 'com.appian:connected-systems-client:1.1.0'
-  implementation 'com.google.guava:guava:31.1-jre'
   implementation 'me.xdrop:fuzzywuzzy:1.4.0'
   implementation 'com.google.code.gson:gson:2.10.1'
   implementation("com.squareup.okhttp3:okhttp:4.11.0")
-  implementation(group: 'io.swagger.parser.v3', name: 'swagger-parser', version: '2.1.15') {
+  implementation(group: 'io.swagger.parser.v3', name: 'swagger-parser', version: '2.1.16') {
     exclude group: 'org.slf4j'
   }
 

@@ -1,5 +1,6 @@
 package com.appian.openai.templates.apis;
 
+import java.beans.Expression;
 import java.io.IOException;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
@@ -27,6 +28,7 @@ public class OpenAIIntegrationTemplate extends SimpleIntegrationTemplate impleme
       SimpleConfiguration connectedSystemConfiguration,
       PropertyPath propertyPath,
       ExecutionContext executionContext) {
+
 
     restBuilder.setIntegrationConfiguration(integrationConfiguration);
     return integrationConfiguration.setProperties(restBuilder.build());

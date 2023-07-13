@@ -165,7 +165,8 @@ public abstract class UIBuilder implements ConstantKeys {
           description + "\n" + "'" + key + "'" + " can be one of the following " + "types: ");
       int propertyNum = 1;
       for (Schema<?> property : item.getOneOf()) {
-        oneOfStrBuilder.append("\n").append(propertyNum++).append(". ").append(parseOneOf(property));
+        oneOfStrBuilder.append("\n").append(propertyNum++).append(". ")
+            .append(property.getEnum() != null ? property.getEnum() : parseOneOf(property));
       }
       return builder.property(simpleIntegrationTemplate.textProperty(key)
           .label(key)
@@ -207,11 +208,16 @@ public abstract class UIBuilder implements ConstantKeys {
       }
 
       // OpenAI's function calling does not have a specific key/value format and thus must be SAIL maps wrapped in a!toJson
-      if (key.equals("parameters")) {
+      if (pathName.equals("/chat/completions") && key.equals("parameters")) {
         item.setType("string");
-        item.setDescription("The value for 'parameters' is dynamic and must be wrapped in a!toJson. Example parameters value: " +
-            "a!toJson( { type: \"object\", properties: { location: { type: \"string\", description: \"The city and state, e.g. San Francisco, " +
-            "CA\" }, unit: { type: \"string\", enum: { \"celsius\", \"fahrenheit\" } } }, required: { \"location\" } }). " + item.getDescription());
+        item.setDescription("The value for 'parameters' is dynamic and must be wrapped in a!toJson(). Example parameters value:" +
+            " a!toJson( { type: \"object\", properties: { location: { type: \"string\", description: \"The city and state, e.g." +
+            " San Francisco, CA\" }, unit: { type: \"string\", enum: { \"celsius\", \"fahrenheit\" } } }, required: { \"location\" } }). "
+            + item.getDescription());
+      } else if (key.equals("arguments")) {
+        item.setType("string");
+        item.setDescription("The value for 'arguments' is dynamic and must be wrapper in a!toJson(). Example 'arguments' value:" +
+            " a!toJson({ location: \"Boston, MA\" }). " + item.getDescription());
       }
 
     } else if (item.getType().equals("array")) {

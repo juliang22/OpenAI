@@ -165,12 +165,15 @@ public String getPathNameUnmodified() {return pathNameUnmodified;}
         ((ArrayList<?>)val.getValue()).forEach(property -> {
           Map<String,Object> nestedVal = parseReqBodyJSON(property.toString(), ((PropertyState)property));
           String propertyName = property.toString();
-
+          Map<String, Object> functions = (Map<String,Object>)nestedVal.get(propertyName);
           // If a!toJson was used to set parameters in chat/completions function calling
-          if (((Map)nestedVal.get(propertyName)).containsKey("parameters")) {
-            Map<String, Object> functions = (Map<String,Object>)nestedVal.get(propertyName);
+          if (getPathNameUnmodified().equals("/chat/completions") && functions.containsKey("parameters") || functions.containsKey("arguments")) {
+            String paramsOrArgs = functions.get("parameters") != null ?
+                functions.get("parameters").toString() :
+                functions.get("arguments").toString();
+
             try {
-              functions.put("parameters", new ObjectMapper().readValue(functions.get("parameters").toString(), Map.class));
+              functions.put("parameters", new ObjectMapper().readValue(paramsOrArgs, Map.class));
             } catch (JsonProcessingException e) {
               setError("JSON formatting error", "Problem reading a!toJson().", "Make sure request body formatting is correct");
               return;
