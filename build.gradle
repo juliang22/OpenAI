@@ -17,6 +17,8 @@ dependencies {
   implementation(group: 'io.swagger.parser.v3', name: 'swagger-parser', version: '2.1.16') {
     exclude group: 'org.slf4j'
   }
+  implementation group: 'com.google.guava', name: 'guava', version: '32.0.1-android'
+
 
   testImplementation 'com.appian:connected-systems-core:1.2.0'
   testImplementation 'junit:junit:4.13.1'
