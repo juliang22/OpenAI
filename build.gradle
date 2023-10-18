@@ -21,6 +21,7 @@ dependencies {
   testImplementation 'com.appian:connected-systems-core:1.2.0'
   testImplementation 'junit:junit:4.13.1'
   testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.0'
+  compileOnly fileTree(dir: 'libs' ,include: '*.jar')
 }
 
 test {

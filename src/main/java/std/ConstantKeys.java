@@ -62,4 +62,17 @@ public interface ConstantKeys {
   String FOLDER_LOCATION_ERROR_MESSAGE = "Set desired folder location to save the incoming file.";
   String FILE_NAME_ERROR_MESSAGE = "Set desired file name save the incoming file.";
 
+
+  String GET_RECORD_FIELD_NAMES_QUERY = "a!keys(\n" +
+      "  cast(\n" +
+      "    typeof(a!map()),\n" +
+      "    a!queryRecordType(\n" +
+      "      recordType: 'recordType!{%s}',\n" +
+      "      pagingInfo: a!pagingInfo(startIndex: 1, batchSize: 1)\n" +
+      "    ).data[1]\n" +
+      "  )\n" +
+      ")";
+
+  String GET_RECORD_NAME = "toString(recordType!{%s})";
+
 }

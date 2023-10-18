@@ -16,6 +16,8 @@
                             request-policy="read_and_write" />
       <client-api key="chatCompletion" name="ChatGPTChatBot"
                   class="com.appian.openai.templates.apis.ChatBotClientApi" />
+      <client-api key="recordQuery" name="ChatGPTFunctionCalling"
+                  class="com.appian.openai.templates.apis.RecordQueryClientApi" />
     </version>
   </connected-system>
 </appian-plugin>

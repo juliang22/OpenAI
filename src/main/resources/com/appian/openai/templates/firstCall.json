@@ -1,0 +1,14 @@
+{
+  "name": "get_primary_table",
+  "description": "Return the primary table to query to answer the users question ",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "primary_table": {
+        "type": "string",
+        "enum": ["FILL", "IN", "THESE", "VALUES"]
+      }
+    },
+    "required": ["primary_table"]
+  }
+}

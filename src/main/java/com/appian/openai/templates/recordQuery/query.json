@@ -1,0 +1,62 @@
+{
+  "name": "query_records",
+  "description": "Query the _ record using filters. ",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "filters": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "filterField": {
+              "type": ["string", "number", "double"],
+              "description": "The field to filter the data by"
+            },
+            "filterOperator": {
+              "type": "string",
+              "description": "The operator to filter the data by"
+            },
+            "filterValue": {
+              "type": ["string", "array", "number", "null"],
+              "description": "The value to filter the data by"
+            }
+          },
+          "required": ["filterField", "filterOperator", "filterValue"],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "filterField": { "type": "string" }
+                }
+              },
+              "then": {
+                "properties": {
+                  "filterOperator": {
+                    "enum": ["between", "in", "not in", "is null", "not null", "starts with", "not starts with", "ends with", "not ends with", "includes", "not includes"]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "filterField": { "type": ["number", "double"] }
+                }
+              },
+              "then": {
+                "properties": {
+                  "filterOperator": {
+                    "enum": ["=", "<>", ">", ">=", "<", "<="]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "minItems": 1
+      }
+    },
+    "required": ["filters"]
+  }
+}
