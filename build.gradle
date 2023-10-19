@@ -1,5 +1,15 @@
 version '1.2.2'
 
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
+  }
+}
+apply plugin: 'org.owasp.dependencycheck'
+
 apply plugin: 'java'
 
 repositories {
@@ -13,17 +23,23 @@ dependencies {
   implementation 'com.appian:connected-systems-client:1.1.0'
   implementation 'me.xdrop:fuzzywuzzy:1.4.0'
   implementation 'com.google.code.gson:gson:2.10.1'
-  implementation("com.squareup.okhttp3:okhttp:4.11.0")
+  implementation("com.squareup.okhttp3:okhttp:4.12.0")
   implementation(group: 'io.swagger.parser.v3', name: 'swagger-parser', version: '2.1.16') {
     exclude group: 'org.slf4j'
   }
+
+  // Temporary CVE (CVE-2020-8908 and CVE-2023-2976). Guava is a transitory dependency of swagger-parser
   implementation group: 'com.google.guava', name: 'guava', version: '32.0.1-android'
+
+
 
 
   testImplementation 'com.appian:connected-systems-core:1.2.0'
   testImplementation 'junit:junit:4.13.1'
   testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.0'
 }
+
+
 
 test {
   useJUnitPlatform()
@@ -43,6 +59,8 @@ jar {
     attributes("Spring-Context": "*;publish-context:=false")
   }
 }
+
+
 
 configurations {
   /* Uses dependencies in compileOnly for tests */
