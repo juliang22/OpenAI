@@ -2,8 +2,8 @@
   <plugin-info>
     <description>OpenAI Connected System Plugin</description>
     <vendor name="Appian" url="https://appian.com/"/>
-    <version>1.2.3</version>
-    <application-version min="7.6.0.4"/>
+    <version>1.2.4</version>
+    <application-version min="22.2"/>
   </plugin-info>
   <connected-system key="OpenAI">
     <version major-version="1">
