@@ -1,11 +1,15 @@
 package com.appian.openai.templates.UI;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.text.similarity.FuzzyScore;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
@@ -27,8 +31,6 @@ import io.swagger.v3.oas.models.media.BooleanSchema;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
-import me.xdrop.fuzzywuzzy.FuzzySearch;
-import me.xdrop.fuzzywuzzy.model.ExtractedResult;
 import std.ConstantKeys;
 import std.Util;
 
@@ -340,12 +342,22 @@ public abstract class UIBuilder implements ConstantKeys {
     String searchQuery = integrationConfiguration.getValue(SEARCH);
     ArrayList<Choice> choices = new ArrayList<>();
     if (searchQuery != null && !searchQuery.equals("") && !choicesForSearch.isEmpty()) {
-      List<ExtractedResult> extractedResults = FuzzySearch.extractSorted(searchQuery, choicesForSearch);
-      extractedResults.forEach(choice -> {
-        String restType = choice.getString().split(":")[1];
-        String restOperation = choice.getString().split(":")[3];
-        choices.add(Choice.builder().name(restType + " - " + restOperation).value(choice.getString()).build());
+
+      FuzzyScore fuzzyScore = new FuzzyScore(Locale.ENGLISH);
+      Collections.sort(choicesForSearch, (o1, o2) -> {
+        int score1 = fuzzyScore.fuzzyScore(o1, searchQuery);
+        int score2 = fuzzyScore.fuzzyScore(o2, searchQuery);
+        return Integer.compare(score2, score1); // Sort in descending order of match score
       });
+
+      for (String choice : choicesForSearch) {
+        String[] pathInfo = choice.split(":");
+        String restOperation = pathInfo[1];
+        String summary = pathInfo[3];
+        choices.add(
+            new Choice.ChoiceBuilder().name(restOperation.toUpperCase() + " - " + summary).value(choice).build()
+        );
+      }
     }
 
     // If an endpoint is selected, the instructionText will update to the REST call and path name
