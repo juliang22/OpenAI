@@ -57,10 +57,11 @@ public class Util {
     // when the endpoint that changed was the selected endpoint from the user. This check will leave the chosenEndpoint's
     // value as is and not update to value without the summary
     public static boolean isLegacyAPIWithSummaryAsValue(String chosenEndpoint, String value) {
+        if (chosenEndpoint == null) return false;
         String[] split = chosenEndpoint.split(":");
         String restOperation = value.split(":")[1];
         String pathName = value.split(":")[2];
-        if (chosenEndpoint != null && split[1].equals(restOperation) && split[2].equals(pathName) && split.length == 4) {
+        if (split[1].equals(restOperation) && split[2].equals(pathName) && split.length == 4) {
             return true;
         }
         return false;
