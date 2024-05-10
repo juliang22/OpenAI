@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 
+import com.appian.connectedsystems.templateframework.sdk.configuration.Choice;
+
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.parser.core.models.ParseOptions;
@@ -48,6 +50,20 @@ public class Util {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // Fixing legacy mistake where value/key of endpoint was set with endpoint summary information. API summaries are
+    // variable to change leading to issues when the API yaml is updated. This cause the key to change leading to issues
+    // when the endpoint that changed was the selected endpoint from the user. This check will leave the chosenEndpoint's
+    // value as is and not update to value without the summary
+    public static boolean isLegacyAPIWithSummaryAsValue(String chosenEndpoint, String value) {
+        String[] split = chosenEndpoint.split(":");
+        String restOperation = value.split(":")[1];
+        String pathName = value.split(":")[2];
+        if (chosenEndpoint != null && split[1].equals(restOperation) && split[2].equals(pathName) && split.length == 4) {
+            return true;
+        }
+        return false;
     }
 
 }

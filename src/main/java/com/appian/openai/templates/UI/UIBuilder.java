@@ -1,11 +1,15 @@
 package com.appian.openai.templates.UI;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.text.similarity.FuzzyScore;
 
 import com.appian.connectedsystems.simplified.sdk.SimpleIntegrationTemplate;
 import com.appian.connectedsystems.simplified.sdk.configuration.SimpleConfiguration;
@@ -27,8 +31,6 @@ import io.swagger.v3.oas.models.media.BooleanSchema;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
-import me.xdrop.fuzzywuzzy.FuzzySearch;
-import me.xdrop.fuzzywuzzy.model.ExtractedResult;
 import std.ConstantKeys;
 import std.Util;
 
@@ -222,13 +224,17 @@ public abstract class UIBuilder implements ConstantKeys {
 
     } else if (item.getType().equals("array")) {
 
-      if (item.getItems() == null || item.getItems().getProperties() == null)
+      if (item.getItems() == null)
+        return null;
+
+      // TODO: items.getItems().getOneOf() could be possible
+
+      if (item.getItems().getProperties() == null)
         return null;
 
       item.getItems().getProperties().forEach((innerKey, innerItem) -> {
         Schema<?> innerItemSchema = (Schema<?>)innerItem;
-        Set<?> innerRequiredProperties =
-            innerItemSchema.getRequired() != null ?
+        Set<?> innerRequiredProperties = innerItemSchema.getRequired() != null ?
                 new HashSet<>(innerItemSchema.getRequired()) :
                 new HashSet<>(item.getItems().getRequired());;
         LocalTypeDescriptor nested = parseRequestBody(innerKey, innerItemSchema, innerRequiredProperties,
@@ -288,14 +294,16 @@ public abstract class UIBuilder implements ConstantKeys {
 
   // Runs on initialization to set the default paths for the dropdown as well as a list of strings of choices used for
   // sorting when a query is entered
-  public void setDefaultEndpoints(List<CustomEndpoint> customEndpoints) {
+  public void setDefaultEndpoints(SimpleConfiguration integrationConfiguration, List<CustomEndpoint> customEndpoints) {
     // Build search choices when no search query has been entered
     // Check if rest call exists on path and add each rest call of path to list of choices
     Map<String,Operation> operations = new HashMap<>();
 
-    paths.forEach((pathName, path) -> {
-      if (PATHS_TO_REMOVE.contains(pathName))
+    paths.forEach((endpoint, path) -> {
+      if (PATHS_TO_REMOVE.contains(endpoint))
         return;
+
+      String chosenEndpoint = integrationConfiguration.getValue(CHOSEN_ENDPOINT);
 
       operations.put(GET, path.getGet());
       operations.put(POST, path.getPost());
@@ -308,13 +316,17 @@ public abstract class UIBuilder implements ConstantKeys {
           if (openAPIOperation.getDeprecated() != null && openAPIOperation.getDeprecated()) return;
 
           String name = restOperation + " - " + openAPIOperation.getSummary();
-          String value = api + ":" + restOperation + ":" + pathName + ":" + openAPIOperation.getSummary();
+          String value = api + ":" + restOperation + ":" + endpoint;
 
+          // Fixing legacy mistake where summary was set as the choice key
+          if (Util.isLegacyAPIWithSummaryAsValue(chosenEndpoint, value)) {
+            defaultChoices.add(Choice.builder().name(name).value(chosenEndpoint).build());
+          } else {
+            // Choice UI built
+            defaultChoices.add(Choice.builder().name(name).value(value).build());
+          }
           // Builds up choices for search on initial run with all paths
-          choicesForSearch.add(value);
-
-          // Choice UI built
-          defaultChoices.add(Choice.builder().name(name).value(value).build());
+          choicesForSearch.add(value + ":" + openAPIOperation.getSummary());
         }
       });
     });
@@ -336,27 +348,48 @@ public abstract class UIBuilder implements ConstantKeys {
   // Sets the choices for endpoints with either default choices or sorted choices based off of the search query
   public TextPropertyDescriptor endpointChoiceBuilder() {
 
+    String chosenEndpoint = integrationConfiguration.getValue(CHOSEN_ENDPOINT);
+
     // If there is a search query, sort the dropdown with the query
     String searchQuery = integrationConfiguration.getValue(SEARCH);
     ArrayList<Choice> choices = new ArrayList<>();
     if (searchQuery != null && !searchQuery.equals("") && !choicesForSearch.isEmpty()) {
-      List<ExtractedResult> extractedResults = FuzzySearch.extractSorted(searchQuery, choicesForSearch);
-      extractedResults.forEach(choice -> {
-        String restType = choice.getString().split(":")[1];
-        String restOperation = choice.getString().split(":")[3];
-        choices.add(Choice.builder().name(restType + " - " + restOperation).value(choice.getString()).build());
+
+      FuzzyScore fuzzyScore = new FuzzyScore(Locale.ENGLISH);
+      Collections.sort(choicesForSearch, (o1, o2) -> {
+        int score1 = fuzzyScore.fuzzyScore(o1, searchQuery);
+        int score2 = fuzzyScore.fuzzyScore(o2, searchQuery);
+        return Integer.compare(score2, score1); // Sort in descending order of match score
       });
+
+      for (String choice : choicesForSearch) {
+        String[] pathInfo = choice.split(":");
+        String restOperation = pathInfo[1];
+        String endpoint = pathInfo[2];
+        String summary = pathInfo[3];
+
+        String name = restOperation + " - " + summary;
+        String value = api + ":" + restOperation + ":" + endpoint;
+
+        // Fixing legacy mistake where summary was set as the choice key
+        if (Util.isLegacyAPIWithSummaryAsValue(chosenEndpoint, value)) {
+          value = chosenEndpoint;
+        }
+
+        // Creating ordered choices. Value does not have the summary
+        choices.add(Choice.builder().name(name).value(value).build());
+      }
+
     }
 
     // If an endpoint is selected, the instructionText will update to the REST call and path name
-    Object chosenEndpoint = integrationConfiguration.getValue(CHOSEN_ENDPOINT);
-    String instructionText =
-        chosenEndpoint != null ? chosenEndpoint.toString().split(":")[1] + "  " + chosenEndpoint.toString().split(":")[2] : "";
+    String instructionText = chosenEndpoint != null ?
+        chosenEndpoint.split(":")[1] + "  " + chosenEndpoint.split(":")[2] :
+        "";
     return simpleIntegrationTemplate.textProperty(CHOSEN_ENDPOINT)
         .isRequired(true)
         .refresh(RefreshPolicy.ALWAYS)
         .label("Select Endpoint")
-        .transientChoices(true)
         .instructionText(instructionText)
         .choices(choices.size() > 0 ? choices.toArray(new Choice[0]) : defaultChoices.toArray(new Choice[0]))
         .build();

@@ -29,10 +29,6 @@ public class OpenAIUIBuilder extends UIBuilder {
     super();
     setOpenAPI(api);
     setSimpleIntegrationTemplate(simpleIntegrationTemplate);
-
-    List<CustomEndpoint> customEndpoints = Collections.singletonList(new CustomEndpoint(OPENAI, JSONLINES, "/JSONLines",
-        "Creates a JSON Lines file from Appian data."));
-    setDefaultEndpoints(customEndpoints);
   }
 
   public void setOpenAPI(String api) {
@@ -46,6 +42,10 @@ public class OpenAIUIBuilder extends UIBuilder {
   }
 
   public PropertyDescriptor<?>[] build() {
+
+    List<CustomEndpoint> customEndpoints = Collections.singletonList(new CustomEndpoint(OPENAI, JSONLINES, "/JSONLines",
+        "Creates a JSON Lines file from Appian data."));
+    setDefaultEndpoints(integrationConfiguration, customEndpoints);
 
     // If no endpoint is selected, just build the api dropdown
     String selectedEndpoint = integrationConfiguration.getValue(CHOSEN_ENDPOINT);
@@ -66,7 +66,6 @@ public class OpenAIUIBuilder extends UIBuilder {
     String apiType = selectedEndpointStr[0];
     String restOperation = selectedEndpointStr[1];
     String pathName = selectedEndpointStr[2];
-    String pathSummary = selectedEndpointStr[3];
     if (!apiType.equals(api)) {
       integrationConfiguration.setValue(CHOSEN_ENDPOINT, null).setValue(SEARCH, "");
     } else {
@@ -127,7 +126,9 @@ public class OpenAIUIBuilder extends UIBuilder {
     Schema<?> schema = (documentType == null) ?
         paths.get(pathName).getPost().getRequestBody().getContent().get("application/json").getSchema() :
         documentType.getSchema();
-    Set<String> required = new HashSet<>(schema.getRequired());
+    Set<String> required = schema.getRequired() == null ?
+        new HashSet<>() :
+        new HashSet<>(schema.getRequired());
 
     // Control fields you want to remove from specific paths
     Map<String, List<String>> removeFieldsFromReqBody = new HashMap<>();
